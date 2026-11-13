@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from './ui';
+import { printWallSheet } from '../lib/print';
 import { cn } from './cn';
 
 export const SECTIONS = [
@@ -23,7 +24,7 @@ export function Logo({ className }: { className?: string }) {
         <Icon name="sparkle" size={15} className="stroke-[1.9]" />
       </span>
       <span className="font-display text-[15px] font-bold uppercase tracking-[0.14em] text-white">Sage</span>
-      <span className="ml-0.5 hidden rounded-full border border-white/10 px-1.5 py-[1px] text-[9px] font-semibold tracking-[0.14em] text-glow-300/80 sm:inline">
+      <span className="ml-0.5 hidden rounded-full border border-white/10 px-1.5 py-[2px] text-[10px] font-semibold tracking-[0.12em] text-glow-300/80 sm:inline">
         V5 PRO
       </span>
     </a>
@@ -55,6 +56,8 @@ export function useActiveSection(ids: string[]) {
 
 export function Nav() {
   const [open, setOpen] = useState(false);
+  const [more, setMore] = useState(false);
+  const moreRef = useRef<HTMLDivElement | null>(null);
   const [solid, setSolid] = useState(false);
   const active = useActiveSection([...SECTIONS, ...MORE, { id: 'settings', label: 'Settings' }].map((s) => s.id));
 
@@ -66,10 +69,21 @@ export function Nav() {
   }, []);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setOpen(false);
+      setMore(false);
+    };
+    const onDown = (ev: PointerEvent) => {
+      if (more && moreRef.current && !moreRef.current.contains(ev.target as Node)) setMore(false);
+    };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
+    window.addEventListener('pointerdown', onDown);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('pointerdown', onDown);
+    };
+  }, [more]);
 
   return (
     <header
@@ -78,7 +92,7 @@ export function Nav() {
         solid ? 'border-b border-white/[0.07] bg-ink-950/72 backdrop-blur-xl' : 'border-b border-transparent',
       )}
     >
-      <div className="shell flex h-[62px] items-center justify-between gap-3">
+      <div className="shell flex h-[54px] items-center justify-between gap-2 sm:h-[62px]">
         <Logo />
 
         <nav className="hidden items-center gap-0.5 md:flex" aria-label="Sections">
@@ -94,27 +108,36 @@ export function Nav() {
               {s.label}
             </a>
           ))}
-          <div className="group relative">
+          <div className="relative" ref={moreRef}>
             <button
               type="button"
+              onClick={() => setMore((v) => !v)}
               className={cn(
-                'inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] font-medium transition',
-                MORE.some((m) => m.id === active) ? 'bg-white/[0.08] text-white' : 'text-glow-200/65 hover:bg-white/[0.05] hover:text-white',
+                'tap inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] font-medium transition',
+                more || MORE.some((m) => m.id === active)
+                  ? 'bg-white/[0.08] text-white'
+                  : 'text-glow-200/65 hover:bg-white/[0.05] hover:text-white',
               )}
               aria-haspopup="true"
+              aria-expanded={more}
             >
               More
-              <Icon name="chevron" size={13} className="transition-transform duration-200 group-hover:rotate-180" />
+              <Icon name="chevron" size={13} className={cn('transition-transform duration-200', more && 'rotate-180')} />
             </button>
-            <div className="invisible absolute right-0 top-[calc(100%+8px)] w-[264px] rounded-2xl border border-white/10 bg-ink-850/95 p-1.5 opacity-0 shadow-panel backdrop-blur-xl transition-all duration-200 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+            <div
+              className={cn(
+                'absolute right-0 top-[calc(100%+8px)] w-[264px] origin-top-right rounded-2xl border border-white/10 bg-ink-850/95 p-1.5 shadow-panel backdrop-blur-xl transition-all duration-200',
+                more ? 'visible translate-y-0 opacity-100' : 'pointer-events-none invisible -translate-y-1 opacity-0',
+              )}
+            >
               {MORE.map((m) => (
-                <a key={m.id} href={`#${m.id}`} className="block rounded-xl px-3 py-2.5 transition hover:bg-white/[0.07]">
+                <a key={m.id} href={`#${m.id}`} onClick={() => setMore(false)} className="block rounded-xl px-3 py-2.5 transition hover:bg-white/[0.07]">
                   <span className="block text-[13px] font-semibold text-white">{m.label}</span>
                   <span className="block text-[11px] text-glow-200/50">{m.note}</span>
                 </a>
               ))}
               <div className="my-1 h-px bg-white/[0.07]" />
-              <button type="button" onClick={() => window.print()} className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[13px] text-glow-100/85 transition hover:bg-white/[0.07]">
+              <button type="button" onClick={printWallSheet} className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[13px] text-glow-100/85 transition hover:bg-white/[0.07]">
                 <Icon name="printer" size={14} className="text-glow-300" /> Print this week’s wall sheet
               </button>
             </div>
@@ -122,11 +145,12 @@ export function Nav() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <a href="#settings" className="hidden text-[13px] font-medium text-glow-200/70 transition hover:text-white sm:block">
+          <a href="#settings" className="hidden text-[13px] font-medium text-glow-200/70 transition hover:text-white lg:block">
             Sign in to your plan
           </a>
-          <a href="#today" className="btn-light !px-4 !py-2 text-[13px]">
-            Open Command Deck
+          <a href="#today" className="btn-light !min-h-[38px] !px-3.5 !py-1.5 text-[13px] sm:!px-4 sm:!py-2">
+            <span className="sm:hidden">Deck</span>
+            <span className="hidden sm:inline">Open Command Deck</span>
             <Icon name="arrow" size={14} />
           </a>
           <button
@@ -169,7 +193,7 @@ export function Nav() {
               type="button"
               onClick={() => {
                 setOpen(false);
-                window.print();
+                printWallSheet();
               }}
               className="mt-1 flex items-center justify-center gap-2 rounded-xl border border-white/10 px-3 py-2.5 text-[13px] text-glow-100/85"
             >

@@ -8,7 +8,11 @@
     "dev": "vite --host 0.0.0.0 --port 5173",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0 --port 4173",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "icons": "node scripts/gen-icons.mjs",
+    "lint:mobile": "node scripts/mobile-lint.mjs",
+    "test:render": "esbuild tests/render.smoke.tsx --bundle --platform=node --format=cjs --outfile=.scratch/render-smoke.cjs --jsx=automatic --external:react --external:react-dom --log-level=warning && node .scratch/render-smoke.cjs",
+    "check": "npm run typecheck && npm run lint:mobile && npm run test:render"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.1.0",

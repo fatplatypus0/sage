@@ -15,6 +15,8 @@
     --panel: rgba(255, 255, 255, 0.035);
     --line: rgba(158, 193, 255, 0.14);
     --line-strong: rgba(158, 193, 255, 0.26);
+    /* header height, so anchor jumps never land under the fixed nav */
+    --head-h: 54px;
   }
 
   * {
@@ -23,7 +25,12 @@
 
   html {
     scroll-behavior: smooth;
-    scroll-padding-top: 96px;
+    scroll-padding-top: calc(var(--head-h) + 14px);
+  }
+
+  html {
+    /* paints the overscroll area (below the tab bar / past the top) so no white flash */
+    background-color: #020619;
   }
 
   body {
@@ -58,13 +65,29 @@
     color: inherit;
   }
 
+  /* Never let a focused control trigger the mobile "jump-zoom" (needs >= 16px) */
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+  @media (min-width: 641px) {
+    input,
+    textarea,
+    select {
+      font-size: 14px;
+    }
+  }
+
+  select option {
+    background: #0a1027;
+    color: #e8f0ff;
+  }
+
   input[type='date']::-webkit-calendar-picker-indicator {
     filter: invert(0.75) sepia(1) saturate(3) hue-rotate(185deg);
     cursor: pointer;
-  }
-
-  textarea {
-    field-sizing: content;
+    opacity: 0.8;
   }
 
   :focus-visible {
@@ -107,7 +130,7 @@
 
 @layer components {
   .shell {
-    @apply mx-auto w-full max-w-[1180px] px-5 sm:px-7;
+    @apply mx-auto w-full max-w-[1180px] px-4 sm:px-7;
   }
 
   .card {
@@ -129,7 +152,7 @@
   }
 
   .btn {
-    @apply inline-flex select-none items-center justify-center gap-2 rounded-full px-5 py-2.5 text-[14px] font-semibold transition-all duration-200;
+    @apply inline-flex min-h-[44px] select-none items-center justify-center gap-2 rounded-full px-5 py-2.5 text-[14px] font-semibold transition-all duration-200;
   }
 
   .btn-light {
@@ -137,60 +160,77 @@
     background: linear-gradient(180deg, #ffffff 0%, #d5e2ff 100%);
     box-shadow: 0 10px 30px -12px rgba(146, 180, 255, 0.75), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
   }
-  .btn-light:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 16px 40px -14px rgba(146, 180, 255, 0.95), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  @media (hover: hover) {
+    .btn-light:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 40px -14px rgba(146, 180, 255, 0.95), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+    }
+  }
+  .btn-light:active {
+    transform: translateY(1px) scale(0.99);
   }
 
   .btn-ghost {
     @apply btn border border-white/10 bg-white/[0.04] text-glow-100/90;
   }
-  .btn-ghost:hover {
-    @apply border-white/20 bg-white/[0.08];
+  @media (hover: hover) {
+    .btn-ghost:hover {
+      @apply border-white/20 bg-white/[0.08];
+    }
   }
 
   .btn-tiny {
-    @apply inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[12px] font-medium text-glow-200/90 transition hover:border-white/20 hover:bg-white/[0.09] hover:text-white;
+    @apply inline-flex min-h-[40px] items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] font-medium text-glow-200/90 transition sm:min-h-0 sm:px-2.5 sm:py-1 sm:text-[12px];
+  }
+  @media (hover: hover) {
+    .btn-tiny:hover {
+      @apply border-white/20 bg-white/[0.09] text-white;
+    }
+  }
+  .btn-tiny:active {
+    transform: scale(0.97);
   }
 
   .field {
-    @apply w-full rounded-xl border border-white/10 bg-ink-950/60 px-3 py-2 text-[14px] text-glow-100 placeholder:text-glow-200/35 transition focus:border-glow-400/60 focus:bg-ink-950/80;
+    @apply w-full rounded-xl border border-white/10 bg-ink-950/60 px-3 py-2.5 text-[15px] text-glow-100 placeholder:text-glow-200/35 transition focus:border-glow-400/60 focus:bg-ink-950/80 sm:py-2 sm:text-[14px];
   }
 
   .label {
-    @apply mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-glow-200/55;
+    @apply mb-1.5 block text-[11.5px] font-semibold uppercase tracking-[0.14em] text-glow-200/65 sm:text-[11px] sm:tracking-[0.16em] sm:text-glow-200/55;
   }
 
   .kicker {
-    @apply inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-glow-300/70;
+    @apply inline-flex items-center gap-2 text-[11.5px] font-semibold uppercase tracking-[0.18em] text-glow-300/80 sm:text-[11px] sm:tracking-[0.22em] sm:text-glow-300/70;
   }
 
   .muted {
-    @apply text-[14px] leading-relaxed text-glow-200/60;
+    @apply text-[14.5px] leading-relaxed text-glow-200/65 sm:text-[14px] sm:text-glow-200/60;
   }
 
   .num {
     @apply font-display tabular-nums;
   }
 
-  .grad-text {
-    background: linear-gradient(96deg, #ffffff 0%, #e9f0ff 40%, #9ec1ff 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
-  .blue-text {
-    background: linear-gradient(96deg, #9ec1ff, #6f9bff 60%, #c7d8ff);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+  /* anything tappable gets no double-tap-zoom delay and no text selection drag */
+  .tap {
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
   }
 
   .checkbox {
-    @apply relative grid h-[18px] w-[18px] shrink-0 place-items-center rounded-[6px] border transition-all duration-200;
+    @apply relative grid shrink-0 place-items-center rounded-[7px] border transition-all duration-200;
+    width: 21px;
+    height: 21px;
     border-color: rgba(158, 193, 255, 0.4);
     background: rgba(255, 255, 255, 0.04);
+  }
+  @media (min-width: 641px) {
+    .checkbox {
+      width: 18px;
+      height: 18px;
+      border-radius: 6px;
+    }
   }
   .checkbox[data-checked='true'] {
     border-color: transparent;
@@ -198,7 +238,12 @@
   }
 
   .row-hover {
-    @apply transition-colors hover:bg-white/[0.035];
+    @apply transition-colors;
+  }
+  @media (hover: hover) {
+    .row-hover:hover {
+      @apply bg-white/[0.035];
+    }
   }
 
   .topline::before {
@@ -208,6 +253,20 @@
     height: 1px;
     background: linear-gradient(90deg, transparent, rgba(190, 215, 255, 0.85), transparent);
     border-radius: 999px;
+  }
+
+  /* horizontally scrolling strip: thumb-friendly, snapping, no visible bar */
+  .hscroll {
+    @apply -mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .hscroll::-webkit-scrollbar {
+    display: none;
+  }
+  .hscroll > * {
+    scroll-snap-align: start;
+    flex: 0 0 auto;
   }
 }
 
@@ -230,6 +289,33 @@
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
+  /* safe-area helpers for notched phones */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+@media (max-width: 640px) {
+  /* a dozen blurred layers is a real cost on a mid-range phone — keep the blur
+     for the chrome (nav, tab bar, sheets) and let the cards use plain fill */
+  .card {
+    backdrop-filter: none;
+    background-color: rgba(255, 255, 255, 0.045);
+  }
+}
+
+@media (min-width: 641px) {
+  :root {
+    --head-h: 62px;
+  }
+}
+
+@page {
+  size: A4 portrait;
+  margin: 12mm;
 }
 
 @media print {
@@ -240,4 +326,18 @@
     background: #fff !important;
     color: #0b1024 !important;
   }
+  /* "Print wall sheet" prints the sheet only */
+  html[data-print='week'] .print-page {
+    display: none !important;
+  }
+  html[data-print='week'] .wall-sheet {
+    display: block !important;
+  }
+  .wall-sheet {
+    display: none;
+  }
+}
+
+.wall-sheet {
+  display: none;
 }

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { ALL_TASK_IDS, SUBJECT_ORDER, WEEKS, type SubjectKey } from '../data/roadmap';
-import { addDays, diffDays, isoDate, parseISO, todayKey, weekKey } from './date';
+import { addDays, diffDays, isoDate, parseISO, todayKey } from './date';
 
 /* ------------------------------------------------------------------ *
  * Shape of persisted state
@@ -257,17 +257,10 @@ function derive(state: State) {
   const hoursLogged = dayKeys.filter((k) => (state.days[k]?.stem ?? 0) > 0).length;
 
   const weekly = lastNDays(state, 28).map((d) => ({ key: d.key, value: d.log.stem + d.log.evening, habits: d.log.habits.length }));
-  const byWeekKey = new Map<string, { q: number; days: Set<string> }>();
-  for (const k of dayKeys) {
-    const wk = weekKey(parseISO(k));
-    const cur = byWeekKey.get(wk) ?? { q: 0, days: new Set<string>() };
-    cur.q += state.days[k].stem + state.days[k].evening;
-    cur.days.add(k);
-    byWeekKey.set(wk, cur);
-  }
-
   const sleepDays = dayKeys.filter((k) => state.days[k]?.lightsOut).length;
-  const sleepPct = hoursLogged ? sleepDays / Math.max(1, dayKeys.length) : 0;
+  // Nights held out of the nights that have actually happened so far (max 28, the review window).
+  const nightsElapsed = Math.max(1, Math.min(28, Math.max(0, dayNumber)));
+  const sleepPct = sleepDays / nightsElapsed;
 
   const subjectLoad = SUBJECT_ORDER.map((s) => ({ key: s, done: 0, total: 0 }));
   const idx = new Map(subjectLoad.map((s) => [s.key, s]));
@@ -303,9 +296,9 @@ function derive(state: State) {
     daysToExam,
     hoursLogged,
     weekly,
-    byWeekKey,
     sleepDays,
     sleepPct,
+    nightsElapsed,
     subjectLoad,
     readiness,
     plannedQuestions,
@@ -436,5 +429,3 @@ export function useReveal<T extends HTMLElement>() {
   }, []);
   return { ref, shown, cb };
 }
-
-export const currentWeekOf = (state: State) => derive(state).currentWeek;

@@ -1,0 +1,67 @@
+{
+  "name": "SAGE \u2014 EUEE 24-Week Master Study Command Center",
+  "short_name": "SAGE",
+  "description": "The EUEE 6-month master roadmap as a living checklist: sleep-protected mornings, locked drill hours, red-flag notebook, guilt-free weekends.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "fullscreen",
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "portrait",
+  "background_color": "#020619",
+  "theme_color": "#020619",
+  "categories": [
+    "education",
+    "productivity",
+    "lifestyle"
+  ],
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Command deck",
+      "url": "/#today",
+      "description": "Live shift, counters and today's checklist"
+    },
+    {
+      "name": "24-week checklist",
+      "url": "/#checklist",
+      "description": "Tick off the plan"
+    },
+    {
+      "name": "Red-flag notebook",
+      "url": "/#notebook",
+      "description": "Log a missed question"
+    }
+  ]
+}

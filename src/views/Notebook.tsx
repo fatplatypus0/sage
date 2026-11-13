@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Card, Icon, Tag, EmptyState, Bar } from '../components/ui';
 import { REASONS, useStore, type Reason } from '../lib/store';
 import { SUBJECTS, SUBJECT_ORDER, type SubjectKey } from '../data/roadmap';
-import { addDays, fmtShortDate, isoDate, parseISO, todayKey, weekKey } from '../lib/date';
+import { addDays, fmtShortDate, isoDate, parseISO, weekKey } from '../lib/date';
 import { cn } from '../components/cn';
 
 export function Notebook() {
@@ -39,6 +39,7 @@ export function Notebook() {
   }, [state.entries]);
 
   const stale = state.entries.filter((e) => !e.cleared && parseISO(e.created) < addDays(new Date(), -2)).length;
+  const peakReason = Math.max(1, ...reasonCounts.map((r) => r.count));
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_1.15fr]">
@@ -65,7 +66,7 @@ export function Notebook() {
                 type="button"
                 onClick={() => setSubject(s)}
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition',
+                  'tap inline-flex items-center gap-1.5 rounded-full border px-3 py-2.5 text-[12.5px] font-medium transition sm:px-2.5 sm:py-1 sm:text-[11.5px]',
                   subject === s ? 'border-white/25 text-white' : 'border-white/[0.08] text-glow-200/55 hover:text-white',
                 )}
                 style={subject === s ? { background: `${SUBJECTS[s].color}22`, borderColor: `${SUBJECTS[s].color}66` } : undefined}
@@ -102,7 +103,7 @@ export function Notebook() {
                   type="button"
                   onClick={() => setReason(r.key)}
                   className={cn(
-                    'rounded-xl border px-2.5 py-2 text-left text-[11.5px] transition',
+                    'tap rounded-xl border px-3 py-3 text-left text-[12.5px] transition sm:px-2.5 sm:py-2 sm:text-[11.5px]',
                     reason === r.key ? 'border-glow-400/50 bg-glow-500/15 text-white' : 'border-white/[0.08] bg-white/[0.02] text-glow-200/60 hover:border-white/20',
                   )}
                 >
@@ -119,7 +120,7 @@ export function Notebook() {
           <label>
             <span className="label">3 · The golden rule</span>
             <textarea
-              className="field min-h-[74px] resize-y leading-snug"
+              className="field min-h-[96px] resize-y leading-snug sm:min-h-[74px]"
               placeholder="R = v²·sin(2θ)/g — maximise at 45°, then check units before committing the bubble."
               value={rule}
               onChange={(e) => setRule(e.target.value)}
@@ -127,8 +128,8 @@ export function Notebook() {
             />
           </label>
 
-          <div className="flex items-center gap-2">
-            <button type="submit" className="btn-light !py-2 text-[13px]">
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="submit" className="btn-light w-full !py-3 text-[14px] sm:w-auto sm:!py-2 sm:text-[13px]">
               <Icon name="plus" size={14} /> Add red flag
             </button>
             <span className="text-[11.5px] text-glow-200/45">Saved to this browser · {state.entries.length} total</span>
@@ -159,7 +160,7 @@ export function Notebook() {
                 <Icon name="eye" size={12} /> {onlyOpen ? 'Open only' : 'All states'}
               </button>
               <select
-                className="field !w-auto !py-1 text-[12px]"
+                className="field !w-auto !py-2.5 text-[13px] sm:!py-1 sm:text-[12px]"
                 value={filterSubject}
                 onChange={(e) => setFilterSubject(e.target.value as SubjectKey | 'all')}
                 aria-label="Filter notebook by subject"
@@ -217,7 +218,7 @@ export function Notebook() {
                       <button
                         type="button"
                         onClick={() => dispatch({ type: 'patchEntry', id: e.id, patch: { cleared: !e.cleared } })}
-                        className={cn('grid h-7 w-7 place-items-center rounded-lg border transition', e.cleared ? 'border-mint/50 bg-mint/15 text-mint' : 'border-white/12 hover:border-mint/50 hover:text-mint')}
+                        className={cn('tap grid h-10 w-10 place-items-center rounded-lg border transition sm:h-7 sm:w-7', e.cleared ? 'border-mint/50 bg-mint/15 text-mint' : 'border-white/12 hover:border-mint/50 hover:text-mint')}
                         aria-label={e.cleared ? 'Reopen entry' : 'Mark cleared after re-solving'}
                         title={e.cleared ? 'Reopen' : 'Mark cleared (re-solved)'}
                       >
@@ -226,7 +227,7 @@ export function Notebook() {
                       <button
                         type="button"
                         onClick={() => dispatch({ type: 'delEntry', id: e.id })}
-                        className="grid h-7 w-7 place-items-center rounded-lg border border-white/12 text-glow-200/50 transition hover:border-rose/50 hover:text-rose"
+                        className="tap grid h-10 w-10 place-items-center rounded-lg border border-white/12 text-glow-200/50 transition hover:border-rose/50 hover:text-rose sm:h-7 sm:w-7"
                         aria-label="Delete entry"
                         title="Delete"
                       >
@@ -258,7 +259,7 @@ export function Notebook() {
                     <span className="text-glow-100/85">{r.label}</span>
                     <span className="num text-glow-200/50">{r.count}</span>
                   </div>
-                  <Bar value={state.entries.length ? r.count / Math.max(1, state.entries[0] ? Math.max(...reasonCounts.map((x) => x.count)) : 1) : 0} color="#f472b6" className="mt-1" height={4} />
+                  <Bar value={r.count / peakReason} color="#f472b6" className="mt-1" height={4} />
                 </div>
               ))}
             </div>
@@ -325,7 +326,7 @@ function download(name: string, text: string, type: string) {
  * 28-day drill heatmap — exported for the Stats view
  * ------------------------------------------------------------------ */
 
-export function DrillHeatmap({ compact = false }: { compact?: boolean }) {
+export function DrillHeatmap() {
   const { state } = useStore();
   const days = useMemo(() => {
     const out: { key: string; total: number; log: NonNullable<ReturnType<typeof pick>> }[] = [];
@@ -354,7 +355,7 @@ export function DrillHeatmap({ compact = false }: { compact?: boolean }) {
           <div className="text-[10px] uppercase tracking-[0.14em] text-glow-200/45">Qs / 4 weeks</div>
         </div>
       </div>
-      <div className={cn('mt-3 grid grid-cols-7 gap-1.5', compact && 'gap-1')}>
+      <div className="mt-3 grid grid-cols-7 gap-1.5">
         {days.map((d) => {
           const p = d.total / max;
           const on = d.total >= 45;
@@ -365,7 +366,7 @@ export function DrillHeatmap({ compact = false }: { compact?: boolean }) {
               className={cn('relative aspect-square rounded-[7px] border transition', d.log.lightsOut ? 'border-mint/45' : 'border-white/[0.07]')}
               style={{ background: `rgba(111,155,255,${0.05 + p * 0.75})`, boxShadow: on ? '0 0 14px -4px rgba(158,193,255,0.9)' : undefined }}
             >
-              <span className="absolute inset-x-0 bottom-0.5 text-center text-[8.5px] tabular-nums text-white/45">{Number(d.key.slice(8))}</span>
+              <span className="absolute inset-x-0 bottom-0.5 text-center text-[10px] tabular-nums text-white/60">{Number(d.key.slice(8))}</span>
             </div>
           );
         })}
@@ -385,9 +386,4 @@ export function DrillHeatmap({ compact = false }: { compact?: boolean }) {
 
 function pick(d?: { stem: number; evening: number; sat: number; eng: number; lightsOut: boolean }) {
   return d ?? { stem: 0, evening: 0, sat: 0, eng: 0, lightsOut: false };
-}
-
-export function todayDrillTotal(stateDays: Record<string, { stem: number; evening: number; sat: number; eng: number }>) {
-  const l = stateDays[todayKey()];
-  return l ? l.stem + l.evening + l.sat + l.eng : 0;
 }

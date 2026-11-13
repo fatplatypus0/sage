@@ -19,8 +19,14 @@ export function addDays(d: Date, n: number): Date {
   return c;
 }
 
-export const diffDays = (a: Date, b: Date) =>
-  Math.round((a.setHours(0, 0, 0, 0), b.setHours(0, 0, 0, 0), (b.getTime() - a.getTime()) / 86400000));
+/** Whole-day difference (b - a) in the viewer's timezone. Never mutates its arguments. */
+export function diffDays(a: Date, b: Date): number {
+  const x = new Date(a);
+  x.setHours(0, 0, 0, 0);
+  const y = new Date(b);
+  y.setHours(0, 0, 0, 0);
+  return Math.round((y.getTime() - x.getTime()) / 86400000);
+}
 
 /** 0 = Sunday … 6 = Saturday */
 export const dayIndex = (d = new Date()) => d.getDay();
@@ -47,12 +53,6 @@ export function fmtClock(mins: number): string {
   const ampm = h24 < 12 ? 'AM' : 'PM';
   const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
   return `${h12}:${pad(mm)} ${ampm}`;
-}
-
-export function fmtDuration(mins: number): string {
-  const m = Math.max(0, Math.round(mins));
-  const h = Math.floor(m / 60);
-  return h ? `${h}h ${pad(m % 60)}m` : `${m}m`;
 }
 
 export function fmtCountdown(ms: number): string {

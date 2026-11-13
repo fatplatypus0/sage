@@ -55,14 +55,18 @@ export function Shifts() {
           </div>
         </div>
 
-        <div className="mt-5 overflow-x-auto scrollbar-none">
+        <div className="mt-4 flex items-center gap-2 text-[11px] text-glow-200/45 sm:hidden">
+          <Icon name="arrow" size={13} />
+          swipe the grid sideways to see Friday – Sunday
+        </div>
+        <div className="mt-3 overflow-x-auto scrollbar-none sm:mt-5">
           <div className="min-w-[680px]">
             <div className="grid grid-cols-[92px_repeat(7,1fr)] gap-1.5">
               <div />
               {DAY_PLAN.map((d, i) => (
                 <div key={d.day} className={cn('rounded-lg px-2 py-1.5 text-center', i + 1 === today ? 'bg-white/[0.1]' : 'bg-white/[0.03]')}>
                   <div className={cn('font-display text-[12.5px] font-semibold', i + 1 === today ? 'text-white' : 'text-glow-200/70')}>{d.short}</div>
-                  <div className="text-[9.5px] uppercase tracking-[0.1em] text-glow-200/40">{i + 1 <= 4 ? 'engine' : i + 1 === 5 ? 'buffer' : 'off'}</div>
+                  <div className="text-[10.5px] uppercase tracking-[0.08em] text-glow-200/50">{i + 1 <= 4 ? 'engine' : i + 1 === 5 ? 'buffer' : 'off'}</div>
                 </div>
               ))}
 

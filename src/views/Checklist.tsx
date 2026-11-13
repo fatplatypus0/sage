@@ -74,8 +74,14 @@ export function Checklist() {
               type="button"
               className="btn-tiny !border-glow-400/40 !bg-glow-500/15 !text-white"
               onClick={() => {
+                setFilter('all');
+                setSubject('all');
+                setQ('');
+                setBoard(false);
                 setOpen([currentWeek.n]);
-                document.getElementById('checklist')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                requestAnimationFrame(() =>
+                  document.getElementById(`week-${currentWeek.n}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+                );
               }}
             >
               <Icon name="target" size={13} /> Jump to week {currentWeek.n}
@@ -83,15 +89,33 @@ export function Checklist() {
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-4">
-          <div className="flex flex-wrap gap-1.5">
+        <div className="mt-4 flex flex-col gap-2.5 border-t border-white/[0.06] pt-4 sm:flex-row sm:items-center sm:gap-2">
+          <label className="relative order-first w-full sm:ml-auto sm:order-last sm:w-56">
+            <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-glow-200/45">
+              <Icon name="search" size={15} />
+            </span>
+            <input
+              className="field !pl-9"
+              placeholder="Search units, drills, clinics…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              aria-label="Search the roadmap"
+              enterKeyHint="search"
+            />
+            {q ? (
+              <button type="button" onClick={() => setQ('')} aria-label="Clear search" className="tap absolute right-1.5 top-1/2 grid h-10 w-10 place-items-center -translate-y-1/2 rounded-full text-glow-200/60 active:bg-white/10 sm:right-2 sm:h-7 sm:w-7 sm:hover:text-white">
+                <Icon name="x" size={14} />
+              </button>
+            ) : null}
+          </label>
+          <div className="hscroll gap-1.5 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
             {([{ key: 'all', label: 'All 24 weeks' }, ...PHASES.map((p) => ({ key: p.key, label: p.name }))] as { key: Filter; label: string }[]).map((f) => (
               <button
                 key={f.key}
                 type="button"
                 onClick={() => setFilter(f.key)}
                 className={cn(
-                  'rounded-full border px-3 py-1.5 text-[12px] font-medium transition',
+                  'tap shrink-0 rounded-full border px-3.5 py-2.5 text-[13px] font-medium transition sm:px-3 sm:py-1.5 sm:text-[12px]',
                   filter === f.key
                     ? 'border-white/25 bg-white/[0.1] text-white'
                     : 'border-white/[0.08] bg-white/[0.02] text-glow-200/60 hover:border-white/20 hover:text-white',
@@ -101,30 +125,18 @@ export function Checklist() {
               </button>
             ))}
           </div>
-          <span className="mx-1 hidden h-5 w-px bg-white/10 sm:block" />
-          <div className="flex flex-wrap gap-1.5">
+          <span className="hidden h-5 w-px shrink-0 bg-white/10 sm:block" />
+          <div className="hscroll gap-1.5 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
             <SubjectChip active={subject === 'all'} onClick={() => setSubject('all')} label="All subjects" />
             {(['math', 'physics', 'chem', 'bio'] as SubjectKey[]).map((s) => (
               <SubjectChip key={s} active={subject === s} onClick={() => setSubject(subject === s ? 'all' : s)} label={SUBJECTS[s].short} color={SUBJECTS[s].color} />
             ))}
           </div>
-          <label className="relative ml-auto w-full sm:w-56">
-            <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-glow-200/45">
-              <Icon name="search" size={14} />
-            </span>
-            <input
-              className="field !py-1.5 pl-8 text-[13px]"
-              placeholder="Search units, drills, clinics…"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              aria-label="Search the roadmap"
-            />
-          </label>
         </div>
       </Card>
 
       {board ? (
-        <Board weeks={weeks} setOpen={setOpen} />
+        <Board weeks={weeks} setOpen={setOpen} setBoard={setBoard} />
       ) : weeks.length === 0 ? (
         <EmptyState
           icon="search"
@@ -159,7 +171,7 @@ function SubjectChip({ label, color, active, onClick }: { label: string; color?:
       type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition',
+        'tap inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-2.5 text-[12.5px] font-medium transition sm:px-2.5 sm:py-1 sm:text-[11.5px]',
         active ? 'border-white/25 bg-white/[0.1] text-white' : 'border-white/[0.08] bg-white/[0.02] text-glow-200/60 hover:text-white',
       )}
     >
@@ -169,7 +181,7 @@ function SubjectChip({ label, color, active, onClick }: { label: string; color?:
   );
 }
 
-function Board({ weeks, setOpen }: { weeks: Week[]; setOpen: (n: number[]) => void }) {
+function Board({ weeks, setOpen, setBoard }: { weeks: Week[]; setOpen: (n: number[]) => void; setBoard: (b: boolean) => void }) {
   const { derived } = useStore();
   return (
     <Card>
@@ -177,7 +189,7 @@ function Board({ weeks, setOpen }: { weeks: Week[]; setOpen: (n: number[]) => vo
         <h4 className="font-display text-[15px] font-semibold text-white">24-week board</h4>
         <span className="text-[11px] text-glow-200/50">{weeks.length} weeks shown · green = complete</span>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+      <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
         {WEEKS.map((w) => {
           const stat = derived.weekStats[w.n - 1];
           const p = phaseOf(w.n);
@@ -188,9 +200,10 @@ function Board({ weeks, setOpen }: { weeks: Week[]; setOpen: (n: number[]) => vo
               key={w.n}
               type="button"
               onClick={() => {
+                setBoard(false);
                 setOpen(stat.complete ? [] : [w.n]);
                 if (!shown) return;
-                document.getElementById(`week-${w.n}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                requestAnimationFrame(() => document.getElementById(`week-${w.n}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
               }}
               className={cn(
                 'group relative overflow-hidden rounded-xl border p-2.5 text-left transition',
@@ -242,11 +255,12 @@ function WeekRow({ week, open, onToggle, current }: { week: Week; open: boolean;
               </span>
             ) : null}
           </div>
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-glow-200/60">
+          <div className="mt-1.5 flex flex-col gap-y-0.5 text-[12px] text-glow-200/60 sm:flex-row sm:flex-wrap sm:gap-x-3">
             {week.sides.map((s) => (
-              <span key={s.label} className="inline-flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full" style={{ background: SUBJECTS[s.subject].color }} />
-                {s.label.split('—')[0].trim()} · <span className="text-glow-200/45">{s.short}</span>
+              <span key={s.label} className="flex min-w-0 items-center gap-1.5">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: SUBJECTS[s.subject].color }} />
+                <span className="shrink-0">{s.label.split('—')[0].trim()}</span>
+                <span className="min-w-0 truncate text-glow-200/45">· {s.short}</span>
               </span>
             ))}
             {week.mode !== 'foundation' ? <span className="inline-flex items-center gap-1.5 text-amber/80">timed papers only</span> : null}

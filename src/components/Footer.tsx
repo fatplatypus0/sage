@@ -9,7 +9,7 @@ export function Footer() {
   return (
     <footer className="relative mt-8 overflow-hidden border-t border-white/[0.07]">
       <Starfield count={40} className="opacity-50" />
-      <div className="shell relative py-12">
+      <div className="shell relative py-10 sm:py-12">
         <div className="grid gap-8 md:grid-cols-[1.4fr_1fr_1fr]">
           <div>
             <div className="flex items-center gap-2">

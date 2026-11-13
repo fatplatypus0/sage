@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, Icon, Tag, Ring, Bar } from '../components/ui';
-import { ERROR_PROTOCOL, GOLDEN_RULES, THURSDAY_SYNC } from '../data/roadmap';
+import { ERROR_PROTOCOL, GOLDEN_RULES, THURSDAY_SYNC, WEEKS } from '../data/roadmap';
 import { useStore } from '../lib/store';
 import { todayKey } from '../lib/date';
 import { cn } from '../components/cn';
@@ -15,6 +15,8 @@ const PRESETS = [
 
 export function Toolkit() {
   const { state, derived } = useStore();
+  const week = WEEKS[derived.currentWeek - 1];
+  const weekTarget = week.weeklyQuestions;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1.05fr_1fr]">
@@ -91,7 +93,7 @@ export function Toolkit() {
           </div>
           <div className="mt-3 flex items-center gap-2 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-[12px] text-glow-200/65">
             <Icon name="users" size={14} className="text-glow-300" />
-            Group of {state.groupSize} · each member owes {derived.currentWeek ? 60 : 60} STEM questions before 7:15 PM verification.
+            Group of {state.groupSize} · each member owes {weekTarget} STEM questions before the 7:15 PM verification.
           </div>
         </Card>
       </div>
