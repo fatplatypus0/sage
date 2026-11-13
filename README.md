@@ -24,6 +24,25 @@ weekend-free study playbook, turned into a living checklist instead of a documen
 Progress persists in `localStorage` under `sage.euee.v5`. **No accounts, no backend, no tracking** — the
 print sheet and the JSON backup are how you carry the plan between devices.
 
+## Built for the phone in your hand at 5:30 AM
+
+The plan is executed in bed, in a dorm room, on a phone — so the phone is the primary target, not an afterthought:
+
+- **App-style tab bar** (Deck · Plan · Flags · Stats · More) with the active section tracked by scroll position, a red
+  badge for open red flags, and safe-area padding for notched phones. `More` is a bottom sheet carrying the remaining
+  sections, the print sheet and the live readiness numbers.
+- **Floating drill logger** above the tab bar while you are on the deck: `+5` and a fill-to-target button, with a
+  haptic tick, so the 5:30 AM hour can be logged with one thumb.
+- **44px tap targets** on every counter, checkbox and chip; `touch-action: manipulation` kills the double-tap delay;
+  16px inputs stop iOS from zoom-jumping on focus.
+- **Swipe rails** for the day strip and the filter chips instead of cramped grids, with scroll snapping; the shift
+  grid keeps a horizontal scroll plus an explicit hint.
+- **Installable and offline**: manifest + generated icons (incl. maskable), `apple-touch-icon`, dark `theme-color`,
+  `viewport-fit=cover`, and a service worker that registers only in production so `vite dev` stays honest. Open it
+  once and the plan works on bad wifi.
+- `npm run lint:mobile` is a guardrail, not a wish: it fails the check when a sub-32px button, 9px copy, hover-only
+  reveal, `100vh`, a stray bottom-fixed layer or a dangling anchor comes back. See `scripts/mobile-lint.mjs`.
+
 ## Stack
 
 - [Vite](https://vitejs.dev) + React 18 + TypeScript (strict)
@@ -35,10 +54,11 @@ print sheet and the JSON backup are how you carry the plan between devices.
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
-npm run typecheck  # tsc --noEmit
-npm run build      # static bundle in dist/
-npm run preview    # serve the production bundle
+npm run dev          # http://localhost:5173
+npm run check        # typecheck + mobile lint + render smoke test
+npm run build        # static bundle in dist/ (icons + manifest + sw included)
+npm run preview      # serve the production bundle
+npm run icons        # regenerate PWA icons from the mark in scripts/gen-icons.mjs
 ```
 
 Deploy `dist/` to any static host (Netlify, GitHub Pages, Vercel, a school server). No env vars, no API.
@@ -52,12 +72,22 @@ blocks, so editing a block updates the checklist, the deck, the counters and the
 
 ```
 src/
-  data/roadmap.ts      the plan, as data (phases · blocks → 24 weeks · shifts · protocols)
+  data/roadmap.ts      the plan, as data (phases · blocks → 24 weeks · shifts · protocols · habits)
   lib/store.tsx        reducer + localStorage persistence + all derived metrics
   lib/date.ts          local-date helpers (day keys, week keys, shift math)
-  components/          nav, hero + live deck, starfield/arc backdrop, UI atoms, icons
+  lib/print.ts         scoped "print the wall sheet only"
+  lib/haptic.ts        optional vibration
+  components/          nav, mobile chrome (tab bar + quick log), hero + live deck,
+                       starfield/arc backdrop, wall sheet, UI atoms, icons
   views/               Today · Checklist · Shifts · Notebook · Stats · Toolkit · Settings
+scripts/               gen-icons.mjs · mobile-lint.mjs
+tests/render.smoke.tsx SSR smoke test: plan data, ids, PWA wiring, a11y
 ```
+
+`tests/render.smoke.tsx` renders the whole tree in Node and asserts the invariants that are
+easy to break from a data edit: 24 weeks, unique week-namespaced task ids, phase spans,
+15 → 20 question ramp, no duplicate DOM ids, every `href="#x"` reachable, and every manifest
+icon present on disk.
 
 ## Design notes
 

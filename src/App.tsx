@@ -11,6 +11,8 @@ import { Notebook } from './views/Notebook';
 import { Stats } from './views/Stats';
 import { Toolkit } from './views/Toolkit';
 import { Settings } from './views/Settings';
+import { MobileChrome } from './components/MobileChrome';
+import { WallSheet } from './components/WallSheet';
 
 export default function App() {
   return (
@@ -24,9 +26,10 @@ const goTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behav
 
 function Shell() {
   return (
-    <div className="relative min-h-screen">
-      {/* film grain + top vignette: the reference's atmosphere */}
-      <div className="noise pointer-events-none fixed inset-0 z-[1] opacity-[0.05] mix-blend-soft-light" aria-hidden="true" />
+    <>
+      <div className="print-page relative min-h-screen">
+      {/* film grain: kept off phones, where a full-screen blend layer costs scroll performance */}
+      <div className="noise pointer-events-none fixed inset-0 z-[1] hidden opacity-[0.05] mix-blend-soft-light md:block" aria-hidden="true" />
 
       <a
         href="#today"
@@ -148,7 +151,12 @@ function Shell() {
       </main>
 
       <Footer />
+      <MobileChrome />
+      <div className="h-[calc(74px+env(safe-area-inset-bottom))] md:hidden" aria-hidden="true" />
     </div>
+
+      <WallSheet />
+    </>
   );
 }
 
@@ -162,7 +170,7 @@ function Divider({ tone = '#6f9bff' }: { tone?: string }) {
 
 function ClosingBand() {
   return (
-    <section className="relative mx-auto mt-8 w-full max-w-[1180px] px-5 pb-16 sm:px-7">
+    <section className="relative mx-auto mt-8 w-full max-w-[1180px] px-4 pb-16 sm:px-7">
       <div className="relative overflow-hidden rounded-[26px] border border-white/[0.09] bg-gradient-to-b from-glow-500/[0.14] via-white/[0.03] to-transparent px-6 py-12 text-center sm:px-12">
         <div
           className="pointer-events-none absolute -top-24 left-1/2 h-48 w-[78%] -translate-x-1/2 rounded-[50%] blur-3xl"

@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { Card, Icon, Ring, Stat, Tag, Checkbox, Bar } from '../components/ui';
 import { DAY_NAMES, DAY_SHORT, dayIndex, fmtClock, minutesOfDay } from '../lib/date';
 import { useNow, useStore, type DrillFields } from '../lib/store';
-import { SHIFTS, SUBJECTS, WEEKS, DAY_PLAN, phaseOf } from '../data/roadmap';
+import { haptic } from '../lib/haptic';
+import { DAILY_HABITS, SHIFTS, SUBJECTS, WEEKS, DAY_PLAN, phaseOf } from '../data/roadmap';
 import { cn } from '../components/cn';
 
 type Status = 'done' | 'live' | 'next' | 'later';
@@ -28,8 +29,7 @@ export function Today() {
   const isRest = di === 0 || di === 6 || (di === 5 && m >= 360);
 
   const timeline = useMemo(() => {
-    const rows = SHIFTS.filter((s) => s.dayMask.includes(di === 0 ? 0 : di) || (di === 5 && s.id === 'weekend') || (di === 6 && s.id === 'weekend'));
-    const ordered = (rows.length ? rows : SHIFTS.filter((s) => s.id === 'weekend' || (di === 5 && s.id === 'friday'))).slice().sort((a, b) => a.start - b.start);
+    const ordered = SHIFTS.filter((s) => s.dayMask.includes(di)).slice().sort((a, b) => a.start - b.start);
     const list = ordered.map((s) => {
       let status: Status = 'later';
       if (m >= s.end) status = 'done';
@@ -61,6 +61,14 @@ export function Today() {
   ];
 
   const weekStats = derived.weekStats[week.n - 1];
+  const habits = DAILY_HABITS.filter((h) => h.days.includes(di));
+
+  /** Counter taps fire a short haptic tick where supported — this is a phone app first. */
+  const bump = (field: DrillFields, delta: number) => {
+    if (!delta) return;
+    dispatch({ type: 'bump', day: todayKey, field, delta });
+    if (delta > 0) haptic(8);
+  };
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
@@ -122,7 +130,7 @@ export function Today() {
               <div
                 key={s.id}
                 className={cn(
-                  'relative flex gap-3 rounded-xl border px-3 py-2.5 transition-all',
+                  'relative flex gap-3 rounded-xl border px-3 py-3 transition-all sm:py-2.5',
                   status === 'live' ? 'border-white/20 bg-white/[0.07]' : 'border-white/[0.06] bg-white/[0.02]',
                   status === 'done' && 'opacity-55',
                 )}
@@ -180,18 +188,52 @@ export function Today() {
                     </div>
                   </div>
                   <div className="mt-2.5 flex items-center gap-1.5">
-                    <CounterBtn icon="minus" onClick={() => dispatch({ type: 'bump', day: todayKey, field: t.field, delta: -5 })} label="Remove 5 questions" />
+                    <CounterBtn icon="minus" onClick={() => bump(t.field, -5)} label="Remove 5 questions" />
                     {[1, 5].map((step) => (
-                      <CounterBtn key={step} icon="plus" onClick={() => dispatch({ type: 'bump', day: todayKey, field: t.field, delta: step })} label={`Add ${step} question${step > 1 ? 's' : ''}`} wide={`+${step}`} />
+                      <CounterBtn key={step} icon="plus" onClick={() => bump(t.field, step)} label={`Add ${step} question${step > 1 ? 's' : ''}`} wide={`+${step}`} />
                     ))}
                     <div className="ml-auto flex items-center gap-1.5">
-                      <CounterBtn icon="target" onClick={() => dispatch({ type: 'bump', day: todayKey, field: t.field, delta: Math.max(1, t.target - value) })} label="Hit today's target" wide="fill" />
-                      <CounterBtn icon="reset" onClick={() => dispatch({ type: 'bump', day: todayKey, field: t.field, delta: -value })} label="Reset counter" />
+                      {t.target > 0 ? (
+                        <CounterBtn
+                          icon="check"
+                          onClick={() => bump(t.field, Math.max(0, t.target - value))}
+                          label="Fill today's target"
+                          wide="fill"
+                          tone={t.color}
+                        />
+                      ) : null}
+                      <CounterBtn icon="reset" onClick={() => bump(t.field, -value)} label="Reset counter" />
                     </div>
                   </div>
                 </div>
               );
             })}
+          </div>
+          <div className="mt-3 border-t border-white/[0.06] pt-3">
+            <div className="label !mb-2">Habits · {DAY_SHORT[di]}</div>
+            <div className="flex flex-wrap gap-1.5">
+              {habits.map((h) => {
+                const on = log.habits.includes(h.id);
+                return (
+                  <button
+                    key={h.id}
+                    type="button"
+                    onClick={() => {
+                      dispatch({ type: 'habit', day: todayKey, habit: h.id });
+                      if (!on) haptic(6);
+                    }}
+                    title={h.why}
+                    className={cn(
+                      'tap inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-[12px] transition',
+                      on ? 'border-mint/45 bg-mint/[0.12] text-white' : 'border-white/[0.1] bg-white/[0.03] text-glow-200/65',
+                    )}
+                  >
+                    <Icon name={on ? 'check' : 'plus'} size={12} className={on ? 'text-mint' : ''} />
+                    {h.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <p className="mt-3 flex items-start gap-2 rounded-lg bg-white/[0.03] p-2.5 text-[11.5px] leading-snug text-glow-200/60">
             <Icon name="shield" size={14} className="mt-[1px] text-glow-300" />
@@ -234,13 +276,13 @@ export function Today() {
             })}
           </div>
           <div className="mt-3 flex items-center justify-between rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2.5">
-            <span className="text-[12px] text-glow-200/65">Nights held in the last 28 days</span>
+            <span className="text-[12px] text-glow-200/65">Nights held so far</span>
             <span className="num text-[15px] font-semibold text-white">
               {derived.sleepDays}
-              <span className="text-[11px] text-glow-200/45">/28</span>
+              <span className="text-[11px] text-glow-200/45">/{derived.nightsElapsed}</span>
             </span>
           </div>
-          <Bar value={derived.sleepDays / 28} color="#9ec1ff" className="mt-2" height={4} />
+          <Bar value={derived.sleepPct} color="#9ec1ff" className="mt-2" height={4} />
         </Card>
       </div>
 
@@ -290,9 +332,10 @@ export function Today() {
       <Card className="lg:col-span-2">
         <div className="flex items-center justify-between">
           <h4 className="font-display text-[15px] font-semibold text-white">This week at a glance</h4>
-          <span className="text-[11px] text-glow-200/50">tap a day for its job</span>
+          <span className="text-[11px] text-glow-200/50 sm:hidden">swipe →</span>
+          <span className="hidden text-[11px] text-glow-200/50 sm:block">each day has exactly one job</span>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+        <div className="hscroll mt-3 gap-2 sm:mx-0 sm:grid sm:grid-cols-4 sm:px-0 lg:grid-cols-7">
           {DAY_PLAN.map((d, i) => {
             const on = i === di;
             const subject = i === 0 || i === 1 ? week.sides[0].subject : i === 2 || i === 3 ? week.sides[1].subject : null;
@@ -300,7 +343,7 @@ export function Today() {
             return (
               <div
                 key={d.day}
-                className={cn('rounded-xl border p-3 transition', on ? 'border-white/25 bg-white/[0.07]' : 'border-white/[0.06] bg-white/[0.02]')}
+                className={cn('w-[146px] rounded-xl border p-3 transition sm:w-auto', on ? 'border-white/25 bg-white/[0.07]' : 'border-white/[0.06] bg-white/[0.02]')}
               >
                 <div className="flex items-center justify-between">
                   <span className={cn('font-display text-[12.5px] font-semibold', on ? 'text-white' : 'text-glow-200/70')}>{d.short}</span>
@@ -327,11 +370,13 @@ function CounterBtn({
   onClick,
   label,
   wide,
+  tone,
 }: {
   icon: string;
   onClick: () => void;
   label: string;
   wide?: string;
+  tone?: string;
 }) {
   return (
     <button
@@ -340,11 +385,13 @@ function CounterBtn({
       aria-label={label}
       title={label}
       className={cn(
-        'grid h-7 place-items-center rounded-lg border border-white/10 bg-white/[0.05] text-glow-200/80 transition hover:border-glow-300/40 hover:bg-white/[0.12] hover:text-white active:scale-95',
-        wide ? 'px-2 text-[11px] font-semibold' : 'w-7',
+        'tap grid h-11 place-items-center rounded-xl border border-white/10 bg-white/[0.05] text-glow-200/80 transition hover:border-glow-300/40 hover:bg-white/[0.12] hover:text-white active:scale-95 sm:h-8 sm:rounded-lg',
+        wide ? 'px-3 text-[12px] font-semibold sm:px-2 sm:text-[11px]' : 'w-11 sm:w-8',
       )}
+      style={tone ? { borderColor: `${tone}55`, color: '#fff' } : undefined}
     >
-      {wide ? wide : <Icon name={icon} size={13} />}
+      {wide ? wide : <Icon name={icon} size={15} className="sm:hidden" />}
+      {wide ? null : <Icon name={icon} size={13} className="hidden sm:block" />}
     </button>
   );
 }
@@ -353,3 +400,4 @@ function CounterBtn({
 function isoLocal(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+

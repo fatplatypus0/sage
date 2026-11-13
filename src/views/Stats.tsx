@@ -3,7 +3,7 @@ import { useStore, useCountUp } from '../lib/store';
 import { EXAM_SUBJECTS, PHASES, SUBJECTS, TOTAL_CLINIC_QUESTIONS, TOTAL_QUESTIONS, WEEKS, phaseOf } from '../data/roadmap';
 import { DrillHeatmap } from './Notebook';
 import { cn } from '../components/cn';
-import { addDays, isoDate, parseISO, fmtShortDate } from '../lib/date';
+import { parseISO, fmtShortDate } from '../lib/date';
 
 export function Stats() {
   const { state, derived } = useStore();
@@ -54,7 +54,9 @@ export function Stats() {
                 {daysLeft > 0 ? daysLeft : 0}
                 <span className="ml-1 text-[12px] font-medium text-glow-200/60">days</span>
               </div>
-              <div className="mt-1.5 text-[11.5px] text-glow-200/55">{fmtShortDate(exam)} · week {Math.min(24, Math.max(1, Math.ceil((daysLeft < 0 ? 0 : 168 - daysLeft) / 7)))} of 24</div>
+              <div className="mt-1.5 text-[11.5px] text-glow-200/55">
+                {fmtShortDate(exam)} · week {derived.currentWeek} of 24
+              </div>
             </div>
             <div className="rounded-2xl border border-white/[0.08] bg-white/[0.025] p-3.5">
               <div className="text-[10px] uppercase tracking-[0.16em] text-glow-200/55">Program clock</div>
@@ -81,7 +83,7 @@ export function Stats() {
                   className={cn('w-full rounded-[3px] transition-all duration-500', met ? 'bg-gradient-to-t from-glow-600/70 to-glow-200' : 'bg-white/[0.14] group-hover:bg-white/25')}
                   style={{ height: `${Math.max(2.5, h)}%`, boxShadow: met ? '0 0 14px -2px rgba(158,193,255,0.55)' : undefined }}
                 />
-                {i % 7 === 0 ? <span className="mt-1 text-[8px] text-glow-200/35">{fmtShortDate(parseISO(s.key))}</span> : <span className="mt-1 text-[8px] opacity-0">·</span>}
+                {i % 7 === 0 ? <span className="mt-1 text-[10px] text-glow-200/50">{fmtShortDate(parseISO(s.key))}</span> : <span className="mt-1 text-[10px] opacity-0">·</span>}
               </div>
             );
           })}
@@ -199,10 +201,4 @@ function MiniBar({ label, value, color, note }: { label: string; value: number; 
       <div className="mt-1.5 text-[10.5px] text-glow-200/40">{note}</div>
     </div>
   );
-}
-
-/** Used by the footer stamp: date the plan started + the projected finish line. */
-export function programWindow(startISO: string) {
-  const start = parseISO(startISO);
-  return { start, end: addDays(start, 167), startKey: isoDate(start) };
 }

@@ -498,7 +498,7 @@ function tasksFor(block: Block, week: number): Task[] {
       { id: id('errors'), tag: 'Red-flag log', label: 'Log each miss with the 3-line format; re-solve it 48 h later' },
       { id: id('thu'), tag: 'Thu sprint sync', subject: 'sat', label: block.thursday },
       { id: id('sleep'), tag: 'Sleep contract', label: '8:30 PM lights-out — stamina on exam day is built here, not at midnight' },
-      { id: id('fri'), tag: 'Friday buffer', label: block.milestone ?? block.evening },
+      { id: id('rest'), tag: 'Rest day', label: 'Friday afternoon → Sunday: zero papers. Recovery is part of the sprint.' },
     ];
   }
 
@@ -509,7 +509,7 @@ function tasksFor(block: Block, week: number): Task[] {
     { id: id('autopsy'), tag: 'Trap autopsy', label: 'Re-solve every missed mock question; rank the 10 costliest topics' },
     { id: id('thu'), tag: 'Thu readiness', label: block.thursday },
     { id: id('sleep'), tag: 'Sleep contract', label: 'Protect 8:30 PM rigorously — zero late-night cramming from Week 23' },
-    { id: id('fri'), tag: 'Friday buffer', label: block.milestone ?? block.evening },
+    { id: id('gate'), tag: 'Exam gate', label: block.milestone ?? 'No studying this weekend — arrive rested, not revised.' },
   ];
 }
 
@@ -545,12 +545,6 @@ export const WEEKS: Week[] = BLOCKS.flatMap((block) =>
 );
 
 export const ALL_TASK_IDS: string[] = WEEKS.flatMap((w) => w.tasks.map((t) => t.id));
-export const TASK_INDEX: Record<string, { week: number; task: Task }> = (() => {
-  const map: Record<string, { week: number; task: Task }> = {};
-  for (const w of WEEKS) for (const t of w.tasks) map[t.id] = { week: w.n, task: t };
-  return map;
-})();
-
 /* ------------------------------------------------------------------ *
  * Daily shift architecture (Mon – Thu, plus the Friday buffer)
  * ------------------------------------------------------------------ */
@@ -726,6 +720,15 @@ export const GOLDEN_RULES = [
   },
 ];
 
+export const DAILY_HABITS: { id: string; label: string; days: number[]; why: string }[] = [
+  { id: 'prep', label: 'Phone off + bag packed by 8:15 PM', days: [1, 2, 3, 4], why: 'The 3:00 AM alarm only works if the night before was decided in advance.' },
+  { id: 'front', label: 'Sat in the active zone, asked one question', days: [1, 2, 3, 4, 5], why: 'Teachers are your Grade 12 source — that hour is paid study time.' },
+  { id: 'worksheets', label: 'School worksheets cleared in a free period', days: [1, 2, 3, 4, 5], why: 'Keeps the 5:30 PM evening shift free for EUEE questions.' },
+  { id: 'sync', label: 'Two hardest questions ready for the sync', days: [4], why: 'Thursday 6:50 PM: you teach your shortcut to the group.' },
+  { id: 'buffer', label: 'Leftovers finished in the Friday buffer', days: [5], why: 'The only way Friday afternoon stays 100% free.' },
+  { id: 'off', label: 'Completely off — no hidden studying', days: [0, 5, 6], why: 'Guilt-free rest is what makes Monday 3:00 AM possible.' },
+];
+
 export const CURRICULUM_SPLIT = [
   { label: 'Grades 9–11 core STEM', value: 80, note: 'Morning engine, 3:00 – 6:30 AM Mon–Thu', color: '#6f9bff' },
   { label: 'Grade 12 revision link', value: 20, note: 'Evening shift + classroom mastery, Mon–Thu PM', color: '#22d3ee' },
@@ -743,4 +746,3 @@ export const EXAM_SUBJECTS: { key: SubjectKey; papers: string }[] = [
 /* Derived totals used by the copy and the stat tiles. */
 export const TOTAL_QUESTIONS = BLOCKS.reduce((sum, b) => sum + b.weeklyQuestions * (b.to - b.from + 1), 0);
 export const TOTAL_CLINIC_QUESTIONS = 24 * 40;
-export const PROGRAM_DAYS = 24 * 7;

@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import type { ReactNode } from 'react';
 import { useReveal } from '../lib/store';
 import { cn } from './cn';
@@ -154,7 +155,7 @@ export function Section({
         if (ref) ref.current = node;
       }}
       className={cn(
-        'relative mx-auto w-full max-w-[1180px] px-5 py-16 sm:px-7 sm:py-24 transition-all duration-700 print:translate-y-0 print:opacity-100',
+        'relative mx-auto w-full max-w-[1180px] px-4 py-12 sm:px-7 sm:py-24 transition-all duration-700 print:translate-y-0 print:opacity-100',
         shown ? 'translate-y-0 opacity-100' : 'translate-y-5 opacity-0',
         className,
       )}
@@ -235,7 +236,7 @@ export function Ring({
   const v = Math.max(0, Math.min(1, value));
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
-  const gid = `ring-${Math.round(size)}-${color.replace(/[^a-z0-9]/gi, '')}`;
+  const gid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   return (
     <div className={cn('relative shrink-0', className)} style={{ width: size, height: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">

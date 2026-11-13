@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react';
 import { Card, Icon, Tag } from '../components/ui';
-import { emptyState, useStore, type State } from '../lib/store';
+import { useStore, type State } from '../lib/store';
 import { addDays, fmtLongDate, fmtShortDate, parseISO } from '../lib/date';
-import { DAY_PLAN, PHASES, WEEKS, phaseOf } from '../data/roadmap';
+import { printWallSheet } from '../lib/print';
+import { PHASES, WEEKS, phaseOf } from '../data/roadmap';
 import { cn } from '../components/cn';
 
 export function Settings() {
@@ -156,7 +157,7 @@ export function Settings() {
             <button type="button" className="btn-tiny" onClick={copySummary}>
               <Icon name="quote" size={13} /> Copy sync summary
             </button>
-            <button type="button" className="btn-tiny" onClick={() => window.print()}>
+            <button type="button" className="btn-tiny" onClick={printWallSheet}>
               <Icon name="printer" size={13} /> Print wall sheet
             </button>
           </div>
@@ -219,47 +220,7 @@ export function Settings() {
         </Card>
       </div>
 
-      <PrintSheet />
     </div>
   );
 }
 
-/** Print-only week sheet: open on any week, tick boxes with a pen. */
-function PrintSheet() {
-  const { state, derived } = useStore();
-  const week = WEEKS[derived.currentWeek - 1];
-  return (
-    <div className="hidden print:col-span-2 print:block print:w-full" aria-hidden="true">
-      <div className="mb-3 flex items-end justify-between border-b border-black/20 pb-2">
-        <div>
-          <div className="font-display text-[18px] font-bold">{state.name ? `${state.name} · ` : ''}SAGE wall sheet — Week {week.n} of 24</div>
-          <div className="text-[11px]">{phaseOf(week.n).name} · {week.stage} · printed {fmtShortDate(new Date())}</div>
-        </div>
-        <div className="text-right text-[11px]">
-          <div>Drill target: {week.drillTarget}/day · {week.weeklyQuestions} STEM + 40 clinic</div>
-          <div>Lights out 8:30 PM · up 3:00 AM · weekend 100% free</div>
-        </div>
-      </div>
-      <ol className="space-y-1.5">
-        {week.tasks.map((t) => (
-          <li key={t.id} className="flex items-start gap-2 text-[12px]">
-            <span className={cn('mt-[2px] inline-block h-3 w-3 border border-black/50', state.done[t.id] ? 'bg-black/70' : '')} />
-            <span>
-              <b>{t.tag}:</b> {t.label}
-            </span>
-          </li>
-        ))}
-      </ol>
-      <div className="mt-3 grid grid-cols-7 gap-1 text-center text-[9px]">
-        {DAY_PLAN.map((d, i) => (
-          <div key={d.day} className="border border-black/20 p-1">
-            <div className="font-bold">{d.short}</div>
-            <div>{i < 2 ? 'A subj' : i < 4 ? 'B subj' : i === 4 ? 'buffer' : 'off'}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export const blank = emptyState;
