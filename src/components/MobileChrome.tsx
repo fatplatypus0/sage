@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useFocusTrap } from '../lib/focus';
 import { Icon } from './ui';
 import { useActiveSection } from './Nav';
 import { useStore } from '../lib/store';
@@ -11,6 +12,7 @@ import { cn } from './cn';
 
 const TABS = [
   { id: 'today', label: 'Deck', icon: 'bolt' },
+  { id: 'drill', label: 'Drill', icon: 'target' },
   { id: 'checklist', label: 'Plan', icon: 'check' },
   { id: 'notebook', label: 'Flags', icon: 'flag' },
   { id: 'progress', label: 'Stats', icon: 'chart' },
@@ -19,14 +21,17 @@ const TABS = [
 const SHEET_LINKS = [
   { id: 'features', label: 'What SAGE does', icon: 'sparkle' },
   { id: 'shifts', label: 'Daily system', icon: 'calendar' },
+  { id: 'mocks', label: 'Mock ledger', icon: 'trophy' },
+  { id: 'group', label: 'Study group', icon: 'users' },
   { id: 'toolkit', label: 'Timer & Thursday sync', icon: 'clock' },
-  { id: 'settings', label: 'Dates, backup, reset', icon: 'compass' },
+  { id: 'settings', label: 'Dates, reminders, backup', icon: 'compass' },
 ];
 
 export function MobileChrome() {
   const { state, dispatch, derived } = useStore();
   const [sheet, setSheet] = useState(false);
-  const active = useActiveSection(['features', 'today', 'checklist', 'shifts', 'notebook', 'progress', 'toolkit', 'settings']);
+  const sheetRef = useFocusTrap<HTMLDivElement>(sheet);
+  const active = useActiveSection(['features', 'today', 'drill', 'checklist', 'shifts', 'notebook', 'mocks', 'group', 'progress', 'toolkit', 'settings']);
   const week = WEEKS[derived.currentWeek - 1];
   const log = state.days[todayKey()];
   const stem = log?.stem ?? 0;
@@ -178,7 +183,7 @@ export function MobileChrome() {
       {sheet ? (
         <div className="fixed inset-0 z-50 md:hidden no-print" role="dialog" aria-modal="true" aria-label="More sections">
           <button type="button" aria-label="Close menu" onClick={() => setSheet(false)} className="absolute inset-0 bg-ink-950/75 backdrop-blur-sm" />
-          <div className="absolute inset-x-0 bottom-0 rounded-t-[26px] border-t border-white/[0.12] bg-ink-850/96 p-4 pb-safe shadow-panel backdrop-blur-2xl" style={{ animation: 'rise 0.32s cubic-bezier(0.22,1,0.36,1) both' }}>
+          <div ref={sheetRef} className="absolute inset-x-0 bottom-0 rounded-t-[26px] border-t border-white/[0.12] bg-ink-850/96 p-4 pb-safe shadow-panel backdrop-blur-2xl" style={{ animation: 'rise 0.32s cubic-bezier(0.22,1,0.36,1) both' }}>
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20" />
 
             <div className="mb-3 grid grid-cols-3 gap-2">

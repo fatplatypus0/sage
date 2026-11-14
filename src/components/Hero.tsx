@@ -112,6 +112,16 @@ export function Hero({ onOpenApp }: { onOpenApp: () => void }) {
             </a>
           </div>
 
+          {derived.openSession ? (
+            <a
+              href="#drill"
+              className="mt-4 inline-flex items-center gap-2 rounded-full border border-amber/35 bg-amber/[0.08] px-3.5 py-2.5 text-[12.5px] font-medium text-glow-100 backdrop-blur transition hover:border-amber/60 hover:text-white"
+            >
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber" />
+              Drill session still open — {derived.openSession.items.length}/{derived.openSession.target} · keep solving
+            </a>
+          ) : null}
+
           <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] uppercase tracking-[0.14em] text-glow-200/45 sm:text-[11.5px]">
             <span className="inline-flex items-center gap-1.5">
               <Icon name="moon" size={13} className="text-glow-300/70" /> 6.5 h protected sleep

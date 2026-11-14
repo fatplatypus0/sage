@@ -3,13 +3,41 @@ import { Card, Icon, Tag } from '../components/ui';
 import { useStore, type State } from '../lib/store';
 import { addDays, fmtLongDate, fmtShortDate, parseISO } from '../lib/date';
 import { printWallSheet } from '../lib/print';
+import { downloadIcs } from '../lib/ics';
+import { REMINDERS, notificationPermission, requestNotifications, type ReminderKey } from '../lib/reminders';
 import { PHASES, WEEKS, phaseOf } from '../data/roadmap';
 import { cn } from '../components/cn';
 
 export function Settings() {
-  const { state, dispatch, derived, storageOk } = useStore();
+  const { state, dispatch, derived, storageOk, cloud } = useStore();
+  const phaseLabel =
+    cloud.phase === 'unconfigured'
+      ? 'local only'
+      : cloud.phase === 'signed-out'
+        ? 'not connected'
+        : cloud.phase === 'syncing'
+          ? 'syncing…'
+          : cloud.phase === 'queued'
+            ? 'queued'
+            : cloud.phase === 'offline'
+              ? 'offline — queued'
+              : cloud.phase === 'error'
+                ? 'needs attention'
+                : 'in sync';
+  const phaseTone =
+    cloud.phase === 'synced'
+      ? 'border-mint/35 text-mint'
+      : cloud.phase === 'error'
+        ? 'border-rose/40 text-rose'
+        : cloud.phase === 'unconfigured' || cloud.phase === 'signed-out'
+          ? 'border-white/12 text-glow-200/60'
+          : 'border-glow-300/30 text-glow-100';
   const [msg, setMsg] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
   const [confirmReset, setConfirmReset] = useState(false);
+  const [perm, setPerm] = useState(() => notificationPermission());
+  const permLabel = perm === 'unsupported' ? 'In-app only' : perm === 'granted' ? 'Notifications on' : 'Allow notifications';
+  const permission = () => notificationPermission();
   const file = useRef<HTMLInputElement | null>(null);
 
   const flash = (m: string) => {
@@ -127,14 +155,93 @@ export function Settings() {
       </Card>
 
       <div className="grid gap-4">
+        <Card glow={cloud.configured && cloud.signedIn}>
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="font-display text-[15px] font-semibold text-white">Cloud sync</h4>
+            <span className={cn('pill !py-1 !text-[10.5px]', phaseTone)}>
+              <span className={cn('h-1.5 w-1.5 rounded-full', cloud.phase === 'synced' ? 'bg-mint' : cloud.phase === 'error' ? 'bg-rose' : 'bg-glow-300')} />
+              {phaseLabel}
+            </span>
+          </div>
+          {!cloud.configured ? (
+            <>
+              <p className="muted mt-1.5 text-[12.5px] leading-[1.55]">
+                This build has no sync endpoint wired, and that is the default: <strong className="text-glow-100">SAGE needs no account</strong>. Your
+                ticks live in this browser, and the JSON export below is how they move between devices.
+              </p>
+              <p className="mt-2 text-[12px] leading-[1.55] text-glow-200/55">
+                If you want phone ↔ laptop sync anyway, drop a Supabase URL and publishable key into{" "}
+                <code className="rounded bg-white/[0.06] px-1">VITE_SUPABASE_URL</code> /{" "}
+                <code className="rounded bg-white/[0.06] px-1">VITE_SUPABASE_ANON_KEY</code> and set{" "}
+                <code className="rounded bg-white/[0.06] px-1">supabase/schema.sql</code> — the app then mirrors on top of local storage, never
+                instead of it.
+              </p>
+            </>
+          ) : cloud.signedIn ? (
+            <>
+              <p className="muted mt-1.5 text-[12.5px]">
+                Syncing as <span className="text-glow-100">{cloud.who ?? 'this device'}</span> · revision {state.rev}
+                {cloud.pending > 0 ? ` · ${cloud.pending} change${cloud.pending === 1 ? '' : 's'} waiting` : ''}
+                {cloud.lastSyncAt ? ` · last sync ${new Date(cloud.lastSyncAt).toLocaleTimeString()}` : ''}
+              </p>
+              <label className="mt-3 flex items-center gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2.5">
+                <input type="checkbox" checked={cloud.auto} onChange={(e) => cloud.setAuto(e.target.checked)} className="h-4 w-4 accent-[#6f9bff]" />
+                <span className="text-[12.5px] text-glow-100/85">Mirror automatically a few seconds after each change</span>
+              </label>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" className="btn-tiny" onClick={() => void cloud.push()}>
+                  <Icon name="upload" size={13} /> Push now
+                </button>
+                <button type="button" className="btn-tiny" onClick={() => void cloud.sync()}>
+                  <Icon name="reset" size={13} /> Pull &amp; merge
+                </button>
+                <button type="button" className="btn-tiny" onClick={cloud.signOut}>
+                  <Icon name="x" size={13} /> Disconnect
+                </button>
+              </div>
+              <p className="muted mt-2.5 text-[11.5px] leading-[1.5]">
+                Conflicts are resolved by revision, not by merging — the device with the newer revision wins, and the one that loses keeps a
+                local snapshot of the last three restores, so a losing device can still be re-imported.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="muted mt-1.5 text-[12.5px]">
+                Optional, and reversible at any time: connect a Supabase account and the plan mirrors itself between the dorm laptop and the
+                phone you tick at 5:30 AM. Nothing you do here depends on it.
+              </p>
+              <div className="mt-3 flex flex-wrap items-end gap-2">
+                <label className="min-w-[190px] flex-1">
+                  <span className="label">Email for a magic link</span>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="field mt-1.5 w-full"
+                    autoComplete="email"
+                  />
+                </label>
+                <button type="button" className="btn-light !py-2.5 text-[13.5px]" onClick={() => void cloud.signInEmail(email)}>
+                  <Icon name="arrow" size={15} /> Send link
+                </button>
+                <button type="button" className="btn-ghost !py-2.5 text-[13.5px]" onClick={cloud.signInGoogle}>
+                  <Icon name="shield" size={15} /> Google
+                </button>
+              </div>
+            </>
+          )}
+          {cloud.error ? <p className="mt-2.5 text-[11.5px] text-rose">{cloud.error}</p> : null}
+        </Card>
+
         <Card>
           <div className="flex items-center justify-between">
             <h4 className="font-display text-[15px] font-semibold text-white">Backup & hand-off</h4>
             {msg ? <span className="text-[11.5px] text-mint">{msg}</span> : <Tag>{derived.completeWeeks}/24 weeks</Tag>}
           </div>
           <p className="muted mt-1.5 text-[12.5px]">
-            Move your progress between the dorm machine and your phone, paste it into the Thursday group thread, or keep a copy with the
-            physical notebook.
+            Move your progress between the dorm machine and your phone, paste it into the Thursday group thread, or put the shift grid
+            itself into your phone calendar so the 3:00 AM block survives a closed tab.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button type="button" className="btn-tiny" onClick={exportJson}>
@@ -160,6 +267,16 @@ export function Settings() {
             <button type="button" className="btn-tiny" onClick={printWallSheet}>
               <Icon name="printer" size={13} /> Print wall sheet
             </button>
+            <button
+              type="button"
+              className="btn-tiny"
+              onClick={() => {
+                downloadIcs({ programStart: state.programStart, examDate: state.examDate, name: state.name });
+                flash('Calendar file downloaded — open it to add the 24 weeks to your phone.');
+              }}
+            >
+              <Icon name="calendar" size={13} /> Export .ics calendar
+            </button>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-4">
             {!confirmReset ? (
@@ -168,7 +285,9 @@ export function Settings() {
               </button>
             ) : (
               <div className="flex flex-wrap items-center gap-2 rounded-xl border border-rose/35 bg-rose/[0.07] px-3 py-2">
-                <span className="text-[12px] text-glow-100">Erase every tick, counter and notebook entry?</span>
+                <span className="text-[12px] text-glow-100">
+                  Erase every tick, counter and notebook entry{cloud.signedIn && cloud.auto ? ' — and, on the next sync, every device mirrored to your account' : ''}?
+                </span>
                 <button
                   type="button"
                   className="btn-tiny !border-rose/50 !bg-rose/15 !text-rose"
@@ -188,6 +307,78 @@ export function Settings() {
             <span className="text-[11px] text-glow-200/40">Dates and name are kept.</span>
           </div>
         </Card>
+
+        <Card>
+          <div className="flex items-center justify-between">
+            <h4 className="font-display text-[15px] font-semibold text-white">Boundaries &amp; reminders</h4>
+            <button type="button" className="btn-tiny" onClick={() => void requestNotifications().then(() => setPerm(permission()))}>
+              <Icon name="alarm" size={13} /> {permLabel}
+            </button>
+          </div>
+          <p className="muted mt-1.5 text-[12.5px]">
+            Three times the plan cannot survive without. On a phone, an acknowledged nudge ticks the habit for you; the alarm still has
+            to be yours.
+          </p>
+          <div className="mt-3 grid gap-1.5">
+            {(Object.keys(REMINDERS) as ReminderKey[]).map((k) => {
+              const on = state.reminders[k];
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  role="switch"
+                  aria-checked={on}
+                  onClick={() => dispatch({ type: 'setReminder', field: k, value: !on })}
+                  className={cn(
+                    'tap flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition',
+                    on ? 'border-glow-400/45 bg-glow-500/15' : 'border-white/10 bg-white/[0.03]',
+                  )}
+                >
+                  <span className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-lg border', on ? 'border-glow-300/40 bg-white/10 text-glow-100' : 'border-white/10 bg-white/[0.04] text-glow-300/60')}>
+                    <Icon name={k === 'wake' ? 'alarm' : k === 'drill' ? 'target' : 'moon'} size={15} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[13px] font-semibold text-white">{REMINDERS[k].label} · {REMINDERS[k].title.split('—')[1]?.trim() ?? REMINDERS[k].title}</span>
+                    <span className="block truncate text-[11.5px] text-glow-200/50">{REMINDERS[k].body}</span>
+                  </span>
+                  <span className={cn('checkbox shrink-0', on && '!border-transparent')} data-checked={on} aria-hidden="true">
+                    {on ? <Icon name="check" size={12} className="text-ink-950" /> : null}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="muted mt-2.5 text-[11.5px]">
+            Weekdays only — Friday drops the drill nudge, the weekend drops everything but the 3:00 AM wake for Saturday’s 40 questions.
+          </p>
+        </Card>
+
+        {derived.scheduleSlip > 0 ? (
+          <Card className="!border-amber/35 !bg-amber/[0.06]">
+            <span className="kicker">
+              <Icon name="flag" size={12} className="text-amber" /> Schedule pressure
+            </span>
+            <h4 className="mt-2 font-display text-[16px] font-semibold text-white">
+              {derived.weeksLeftInPlan} weeks of plan, {derived.calendarWeeksLeft} weeks of calendar
+            </h4>
+            <p className="muted mt-1.5 text-[13px] leading-[1.55]">
+              You are {derived.scheduleSlip} week{derived.scheduleSlip === 1 ? '' : 's'} behind the grid. The plan’s own answer is not to
+              add hours: re-book the start so the remaining weeks land before the exam, then let the Sunday catch-up block absorb what is
+              behind.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" className="btn-tiny" onClick={() => dispatch({ type: 'shiftStart', days: 7 })}>
+                <Icon name="reset" size={13} /> Slide the plan 7 days later
+              </button>
+              <button type="button" className="btn-tiny" onClick={() => dispatch({ type: 'shiftStart', days: -7 })}>
+                <Icon name="arrow" size={13} /> Pull it 7 days earlier
+              </button>
+              <a href="#group" className="btn-tiny">
+                Book a catch-up block
+              </a>
+            </div>
+          </Card>
+        ) : null}
 
         <Card>
           <h4 className="font-display text-[15px] font-semibold text-white">Phase map</h4>

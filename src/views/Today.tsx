@@ -163,6 +163,25 @@ export function Today() {
 
       {/* ---------------- right column ---------------- */}
       <div className="grid gap-4">
+        {derived.openSession ? (
+          <a
+            href="#drill"
+            className="card flex items-center gap-3 !border-amber/35 !bg-amber/[0.07] p-4 transition hover:border-amber/55"
+          >
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-amber/35 bg-amber/15 text-amber">
+              <Icon name="play" size={16} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[13.5px] font-semibold text-white">
+                Drill session still open · {derived.openSession.items.length} of {derived.openSession.target} logged
+              </span>
+              <span className="block truncate text-[11.5px] text-glow-200/55">
+                End it to bank today&apos;s count and file the misses — or keep solving.
+              </span>
+            </span>
+            <Icon name="arrow" size={15} className="shrink-0 text-amber" />
+          </a>
+        ) : null}
         <Card>
           <div className="flex items-center justify-between">
             <h4 className="font-display text-[15px] font-semibold text-white">Today&apos;s counters</h4>
