@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { ALL_TASK_IDS, SUBJECT_ORDER, WEEKS, type SubjectKey } from '../data/roadmap';
 import { addDays, diffDays, isoDate, parseISO, todayKey } from './date';
+import { useCloudSync, type CloudSync } from './useCloudSync';
 
 /* ------------------------------------------------------------------ *
  * Shape of persisted state
@@ -124,6 +125,10 @@ export type State = {
   reminders: Reminders;
   onboarded: boolean;
   lastVisit: string;
+  /** Monotonic revision for cloud sync — every data-changing action bumps it. */
+  rev: number;
+  /** Wall clock of the last change, used to break a rev tie between devices. */
+  updatedAt: number;
 };
 
 export const STORAGE_KEY = 'sage.euee.v5';
@@ -151,13 +156,15 @@ export const emptyState = (): State => ({
   reminders: { windDown: true, wake: true, drill: false, lastFired: {} },
   onboarded: false,
   lastVisit: todayKey(),
+  rev: 0,
+  updatedAt: 0,
 });
 
 /* ------------------------------------------------------------------ *
  * Reducer
  * ------------------------------------------------------------------ */
 
-type Action =
+export type Action =
   | { type: 'field'; key: 'name' | 'programStart' | 'examDate' | 'groupSize'; value: string | number }
   | { type: 'toggleTask'; id: string }
   | { type: 'setTasks'; ids: string[]; value: boolean }
@@ -184,6 +191,7 @@ type Action =
   | { type: 'shiftStart'; days: number }
   | { type: 'setOnboarded'; value: boolean }
   | { type: 'import'; state: State }
+  | { type: 'hydrate'; state: State }
   | { type: 'reset' };
 
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -193,6 +201,9 @@ const blankDay = (): DayLog => ({ stem: 0, evening: 0, sat: 0, eng: 0, lightsOut
 function day(state: State, key: string): DayLog {
   return state.days[key] ?? blankDay();
 }
+
+/** A pull from the cloud replaces the whole state verbatim — it must not look like a local edit. */
+const NO_REV_BUMP = new Set<Action['type']>(['hydrate']);
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -342,6 +353,8 @@ function reducer(state: State, action: Action): State {
     case 'setOnboarded':
       return { ...state, onboarded: action.value };
     case 'import':
+    case 'hydrate':
+      // a pulled row is somebody else's JSON: same validation gate as a local load
       return sanitize(action.state);
     case 'reset':
       return {
@@ -507,6 +520,8 @@ function sanitize(raw: unknown): State {
     days,
     entries,
     lastVisit: todayKey(),
+    rev: clampNum(Number(s.rev) || 0, 0, Number.MAX_SAFE_INTEGER),
+    updatedAt: Number.isFinite(Number(s.updatedAt)) ? Number(s.updatedAt) : 0,
   };
 }
 
@@ -743,12 +758,20 @@ type Store = {
   dispatch: React.Dispatch<Action>;
   derived: Derived;
   storageOk: boolean;
+  cloud: CloudSync;
 };
 
 const Ctx = createContext<Store | null>(null);
 
+/** Every mutation carries a revision + timestamp, so two devices can be ordered later. */
+function syncedReducer(state: State, action: Action): State {
+  const next = reducer(state, action);
+  if (next === state || NO_REV_BUMP.has(action.type)) return next;
+  return { ...next, rev: state.rev + 1, updatedAt: Date.now() };
+}
+
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, load);
+  const [state, dispatch] = useReducer(syncedReducer, undefined, load);
   const [storageOk, setStorageOk] = useState(true);
   const first = useRef(true);
 
@@ -765,14 +788,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state]);
 
+  const cloud = useCloudSync(state, dispatch);
   const derived = useMemo(() => derive(state), [state]);
-  const value = useMemo(() => ({ state, dispatch, derived, storageOk }), [state, derived, storageOk]);
+  const value = useMemo(() => ({ state, dispatch, derived, storageOk, cloud }), [state, derived, storageOk, cloud]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 /** Reducer-level surface for tests/render.smoke.tsx — the UI must go through useStore(). */
-export const __test = { reducer, sanitize, derive, STORAGE_KEY };
+export const __test = { reducer, syncedReducer, sanitize, derive, STORAGE_KEY };
 
 export function useStore(): Store {
   const ctx = useContext(Ctx);

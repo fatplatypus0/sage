@@ -3,7 +3,7 @@
   "private": true,
   "version": "5.0.0",
   "type": "module",
-  "description": "SAGE \u2014 the 24-week EUEE Master Study Command Center (sleep-protected, Friday-afternoon-free).",
+  "description": "SAGE — the 24-week EUEE Master Study Command Center (sleep-protected, Friday-afternoon-free).",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5173",
     "build": "tsc --noEmit && vite build",
@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "icons": "node scripts/gen-icons.mjs",
     "lint:mobile": "node scripts/mobile-lint.mjs",
-    "test:render": "esbuild tests/render.smoke.tsx --bundle --platform=node --format=cjs --outfile=.scratch/render-smoke.cjs --jsx=automatic --external:react --external:react-dom --log-level=warning && node .scratch/render-smoke.cjs",
+    "test:render": "esbuild tests/render.smoke.tsx --bundle --platform=node --format=cjs --outfile=.scratch/render-smoke.cjs --jsx=automatic --external:react --external:react-dom --log-level=warning --define:import.meta.env='{}' && node .scratch/render-smoke.cjs",
     "check": "npm run typecheck && npm run lint:mobile && npm run test:render"
   },
   "dependencies": {

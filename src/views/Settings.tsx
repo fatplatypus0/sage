@@ -9,8 +9,31 @@ import { PHASES, WEEKS, phaseOf } from '../data/roadmap';
 import { cn } from '../components/cn';
 
 export function Settings() {
-  const { state, dispatch, derived, storageOk } = useStore();
+  const { state, dispatch, derived, storageOk, cloud } = useStore();
+  const phaseLabel =
+    cloud.phase === 'unconfigured'
+      ? 'local only'
+      : cloud.phase === 'signed-out'
+        ? 'not connected'
+        : cloud.phase === 'syncing'
+          ? 'syncing…'
+          : cloud.phase === 'queued'
+            ? 'queued'
+            : cloud.phase === 'offline'
+              ? 'offline — queued'
+              : cloud.phase === 'error'
+                ? 'needs attention'
+                : 'in sync';
+  const phaseTone =
+    cloud.phase === 'synced'
+      ? 'border-mint/35 text-mint'
+      : cloud.phase === 'error'
+        ? 'border-rose/40 text-rose'
+        : cloud.phase === 'unconfigured' || cloud.phase === 'signed-out'
+          ? 'border-white/12 text-glow-200/60'
+          : 'border-glow-300/30 text-glow-100';
   const [msg, setMsg] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
   const [confirmReset, setConfirmReset] = useState(false);
   const [perm, setPerm] = useState(() => notificationPermission());
   const permLabel = perm === 'unsupported' ? 'In-app only' : perm === 'granted' ? 'Notifications on' : 'Allow notifications';
@@ -132,6 +155,85 @@ export function Settings() {
       </Card>
 
       <div className="grid gap-4">
+        <Card glow={cloud.configured && cloud.signedIn}>
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="font-display text-[15px] font-semibold text-white">Cloud sync</h4>
+            <span className={cn('pill !py-1 !text-[10.5px]', phaseTone)}>
+              <span className={cn('h-1.5 w-1.5 rounded-full', cloud.phase === 'synced' ? 'bg-mint' : cloud.phase === 'error' ? 'bg-rose' : 'bg-glow-300')} />
+              {phaseLabel}
+            </span>
+          </div>
+          {!cloud.configured ? (
+            <>
+              <p className="muted mt-1.5 text-[12.5px] leading-[1.55]">
+                This build has no sync endpoint wired, and that is the default: <strong className="text-glow-100">SAGE needs no account</strong>. Your
+                ticks live in this browser, and the JSON export below is how they move between devices.
+              </p>
+              <p className="mt-2 text-[12px] leading-[1.55] text-glow-200/55">
+                If you want phone ↔ laptop sync anyway, drop a Supabase URL and publishable key into{" "}
+                <code className="rounded bg-white/[0.06] px-1">VITE_SUPABASE_URL</code> /{" "}
+                <code className="rounded bg-white/[0.06] px-1">VITE_SUPABASE_ANON_KEY</code> and set{" "}
+                <code className="rounded bg-white/[0.06] px-1">supabase/schema.sql</code> — the app then mirrors on top of local storage, never
+                instead of it.
+              </p>
+            </>
+          ) : cloud.signedIn ? (
+            <>
+              <p className="muted mt-1.5 text-[12.5px]">
+                Syncing as <span className="text-glow-100">{cloud.who ?? 'this device'}</span> · revision {state.rev}
+                {cloud.pending > 0 ? ` · ${cloud.pending} change${cloud.pending === 1 ? '' : 's'} waiting` : ''}
+                {cloud.lastSyncAt ? ` · last sync ${new Date(cloud.lastSyncAt).toLocaleTimeString()}` : ''}
+              </p>
+              <label className="mt-3 flex items-center gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2.5">
+                <input type="checkbox" checked={cloud.auto} onChange={(e) => cloud.setAuto(e.target.checked)} className="h-4 w-4 accent-[#6f9bff]" />
+                <span className="text-[12.5px] text-glow-100/85">Mirror automatically a few seconds after each change</span>
+              </label>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" className="btn-tiny" onClick={() => void cloud.push()}>
+                  <Icon name="upload" size={13} /> Push now
+                </button>
+                <button type="button" className="btn-tiny" onClick={() => void cloud.sync()}>
+                  <Icon name="reset" size={13} /> Pull &amp; merge
+                </button>
+                <button type="button" className="btn-tiny" onClick={cloud.signOut}>
+                  <Icon name="x" size={13} /> Disconnect
+                </button>
+              </div>
+              <p className="muted mt-2.5 text-[11.5px] leading-[1.5]">
+                Conflicts are resolved by revision, not by merging — the device with the newer revision wins, and the one that loses keeps a
+                local snapshot of the last three restores, so a losing device can still be re-imported.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="muted mt-1.5 text-[12.5px]">
+                Optional, and reversible at any time: connect a Supabase account and the plan mirrors itself between the dorm laptop and the
+                phone you tick at 5:30 AM. Nothing you do here depends on it.
+              </p>
+              <div className="mt-3 flex flex-wrap items-end gap-2">
+                <label className="min-w-[190px] flex-1">
+                  <span className="label">Email for a magic link</span>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="field mt-1.5 w-full"
+                    autoComplete="email"
+                  />
+                </label>
+                <button type="button" className="btn-light !py-2.5 text-[13.5px]" onClick={() => void cloud.signInEmail(email)}>
+                  <Icon name="arrow" size={15} /> Send link
+                </button>
+                <button type="button" className="btn-ghost !py-2.5 text-[13.5px]" onClick={cloud.signInGoogle}>
+                  <Icon name="shield" size={15} /> Google
+                </button>
+              </div>
+            </>
+          )}
+          {cloud.error ? <p className="mt-2.5 text-[11.5px] text-rose">{cloud.error}</p> : null}
+        </Card>
+
         <Card>
           <div className="flex items-center justify-between">
             <h4 className="font-display text-[15px] font-semibold text-white">Backup & hand-off</h4>
@@ -183,7 +285,9 @@ export function Settings() {
               </button>
             ) : (
               <div className="flex flex-wrap items-center gap-2 rounded-xl border border-rose/35 bg-rose/[0.07] px-3 py-2">
-                <span className="text-[12px] text-glow-100">Erase every tick, counter and notebook entry?</span>
+                <span className="text-[12px] text-glow-100">
+                  Erase every tick, counter and notebook entry{cloud.signedIn && cloud.auto ? ' — and, on the next sync, every device mirrored to your account' : ''}?
+                </span>
                 <button
                   type="button"
                   className="btn-tiny !border-rose/50 !bg-rose/15 !text-rose"

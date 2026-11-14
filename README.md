@@ -27,6 +27,25 @@ weekend-free study playbook, turned into a living checklist instead of a documen
 Progress persists in `localStorage` under `sage.euee.v5`. **No accounts, no backend, no tracking** — the
 print sheet and the JSON backup are how you carry the plan between devices.
 
+### Optional: cloud sync (opt-in, per device)
+
+If a group wants the same plan on a phone and a dorm laptop, the app can mirror itself to a Supabase project —
+*on top of* local storage, never instead of it. It is off by default and costs nothing to ignore: with no env vars
+set, Settings says plainly “local only”, no request is ever made, and `Settings → Cloud sync` documents the switch.
+
+To turn it on for a deployment:
+
+1. Create a Supabase project, run [`supabase/schema.sql`](supabase/schema.sql) in the SQL editor (one row per user,
+   row-level security so a user can only read/write their own row — there is no anonymous policy at all).
+2. Copy the project URL and the *publishable* anon key into `.env.local` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`)
+   or into Vercel’s environment variables, then enable email/Google providers in Supabase → Auth.
+3. In Settings → Cloud sync, sign in with a magic link or Google. Nothing uploads until a session exists in *that* browser.
+
+Sync is deliberately boring: `rev` counts every data-changing action, a debounced push mirrors the state, and on a
+conflict the higher revision wins wholesale while the losing device keeps a local snapshot (last three) it can
+re-import. No merge algorithm, no server logic, no second source of truth. `useCloudSync` fails silently into
+“queued / offline” states — a dead network never blocks a tick.
+
 ## Built for the phone in your hand at 5:30 AM
 
 The plan is executed in bed, in a dorm room, on a phone — so the phone is the primary target, not an afterthought:

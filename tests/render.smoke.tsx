@@ -5,8 +5,11 @@ import { WEEKS, ALL_TASK_IDS, PHASES, SHIFTS, DAILY_HABITS, TOTAL_QUESTIONS, pha
 import { isoDate, diffDays, parseISO, addDays, weekKey } from '../src/lib/date';
 import { __test, emptyState } from '../src/lib/store';
 import { buildIcs } from '../src/lib/ics';
+import { cloudConfig, decodeJwt, decide, isCloudRow, sessionExpired, __test as __cloudTest } from '../src/lib/cloud';
 
 const errs: string[] = [];
+/** async assertions (stubbed fetch) register here; the summary waits for all of them */
+const pending: Promise<unknown>[] = [];
 const check = (cond: unknown, msg: string) => {
   if (!cond) errs.push(msg);
 };
@@ -161,6 +164,84 @@ check(DAILY_HABITS.every((h) => h.days.length > 0 && h.days.every((d) => d >= 0 
   check(tailLines[5] === 'X-WR-CALNAME:EUEE 24-week plan', 'empty name should not leave a dangling separator');
 }
 
+/* ---------- optional cloud sync: revision plumbing + conflict decision ---------- */
+{
+  const { syncedReducer, sanitize } = __test;
+  check(cloudConfig() === null, 'tests must not run against a real Supabase project');
+  check(decide({ rev: 0, updatedAt: 0 }, null) === 'push', 'a first-ever device should push');
+  check(decide({ rev: 5, updatedAt: 10 }, { rev: 5, updated_at: 10 }) === 'noop', 'identical revisions must not ping-pong');
+  check(decide({ rev: 5, updatedAt: 10 }, { rev: 5, updated_at: 11 }) === 'pull', 'a tie is broken by wall clock');
+  check(decide({ rev: 4, updatedAt: 9999 }, { rev: 5, updated_at: 1 }) === 'pull', 'the higher revision always wins');
+  check(decide({ rev: 6, updatedAt: 1 }, { rev: 5, updated_at: 9999 }) === 'push', 'a newer local device keeps its edits');
+  check(decide({ rev: 0, updatedAt: 5 }, { rev: 1, updated_at: 1 }) === 'pull', 'remote rev 1 beats an untouched local 0');
+
+  let st = emptyState();
+  st = syncedReducer(st, { type: 'field', key: 'name', value: 'Hanna' });
+  check(st.rev === 1 && st.updatedAt > 0, 'an edit must burn exactly one revision');
+  st = syncedReducer(st, { type: 'toggleTask', id: 'w1-plan-read' });
+  check(st.rev === 2, `revisions must be monotonic, got ${st.rev}`);
+  const rejected = syncedReducer(st, { type: 'addPeer', name: '   ' });
+  check(rejected === st, 'a rejected action must not burn a revision (it would fake a pending sync)');
+  const pulled = syncedReducer(st, { type: 'hydrate', state: { ...st, rev: 42, updatedAt: 7 } });
+  const corrupt = syncedReducer(st, {
+    type: 'hydrate',
+    state: { ...st, rev: 9, sessions: [null as never], mocks: 'nope' as never, done: { 'w1-plan-read': true, bogus: true } } as never,
+  });
+  check(Array.isArray(corrupt.sessions) && corrupt.sessions.length === 0, 'a corrupt pulled payload must be sanitized, not trusted');
+  check(corrupt.mocks.length === 0 && corrupt.done.bogus === undefined, 'hydrate must drop unknown task ids');
+  check(corrupt.rev === 9, 'a pull carries the remote revision without bumping it');
+  check(pulled.rev === 42 && pulled.updatedAt === 7, 'hydrate must carry the remote revision verbatim');
+  const roundTrip = sanitize(JSON.parse(JSON.stringify(pulled)));
+  check(roundTrip.rev === 42 && roundTrip.updatedAt === 7, 'rev/updatedAt must survive persistence');
+  check(sanitize({ ...emptyState(), rev: undefined, updatedAt: undefined } as never).rev === 0, 'a v5 payload must default to rev 0');
+  check(sanitize({ rev: 'abc', updatedAt: 'x', done: {} } as never).updatedAt === 0, 'junk revisions must not poison sync');
+
+  check(isCloudRow({ rev: 1, updated_at: 2, data: { v: 6 } }) === true, 'a valid row must be accepted');
+  check(isCloudRow({ rev: '1', updated_at: 2, data: {} }) === false, 'a stringy rev must be rejected');
+  check(isCloudRow(null) === false && isCloudRow([]) === false, 'non-objects must be rejected');
+
+  const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString('base64url');
+  const tok = `${b64({ alg: 'none' })}.${b64({ sub: 'u-1', email: 'a@b.c', exp: Math.floor(Date.now() / 1000) + 600 })}.sig`;
+  const claims = decodeJwt(tok);
+  check(claims.sub === 'u-1' && claims.email === 'a@b.c', 'JWT claims are the only identity source — decode must work');
+  check(sessionExpired({ access_token: tok, refresh_token: 'r', expires_at: 0 }) === false, 'a token with 10 min left is not expired');
+  check(sessionExpired({ access_token: `${b64({ alg: 'none' })}.${b64({ sub: 'u', exp: 1000 })}.s`, refresh_token: 'r', expires_at: 0 }) === true, 'an expired token must trigger a refresh');
+  check(decodeJwt('nonsense').sub === undefined, 'a malformed token must decode to nothing, not throw');
+
+  // the HTTP contract, against a stub — this is the layer that fails silently on a real project
+  {
+    const seen: { url: string; init: any }[] = [];
+    const realFetch = globalThis.fetch;
+    (globalThis as any).fetch = async (url: string, init: any) => {
+      seen.push({ url: String(url), init });
+      return { ok: true, status: 200, text: async () => JSON.stringify({ access_token: 'a', refresh_token: 'r', expires_in: 3600, user: { email: 'x@y.z' } }) };
+    };
+    const cfg = { url: 'https://probe.supabase.co', anon: 'publishable-key' };
+    const run = __cloudTest
+      .request(cfg, '/auth/v1/token?grant_type=refresh_token', { method: 'POST', body: '{}' })
+      .then((r: any) => {
+        const h = seen[0].init.headers;
+        check(r.ok && r.json.access_token === 'a', 'stubbed auth response must parse');
+        check(seen[0].url === 'https://probe.supabase.co/auth/v1/token?grant_type=refresh_token', 'auth endpoint path wrong');
+        check(h.apikey === 'publishable-key', 'every request must carry the publishable key');
+        check(!('Authorization' in h), 'anonymous calls must not send an Authorization header');
+        return __cloudTest.request(cfg, '/rest/v1/sage_progress', { method: 'POST', auth: 'jwt', headers: { Prefer: 'resolution=merge-duplicates,return=representation' }, body: '{}' });
+      })
+      .then((r: any) => {
+        const h = seen[1].init.headers;
+        check(r.ok, 'a 200 must map to ok');
+        check(h.Authorization === 'Bearer jwt', 'row writes must carry the owner JWT');
+        check(String(h['Content-Type']).includes('application/json'), 'PostgREST needs a JSON content type');
+        check(String(h.Prefer).includes('merge-duplicates') && String(h.Prefer).includes('representation'), 'upsert needs merge-duplicates + return=representation');
+        check(typeof seen[1].init.body === 'string', 'bodies must be pre-serialized strings');
+      })
+      .finally(() => {
+        (globalThis as any).fetch = realFetch;
+      });
+    pending.push(run);
+  }
+}
+
 /* ---------- render the whole tree ---------- */
 let html = '';
 try {
@@ -199,6 +280,7 @@ check(html.includes('The 10 costliest'), 'costliest-topics board missing from th
 check(html.includes('Start the hour') || html.includes('Session in progress'), 'drill runner did not render');
 check(html.includes('No mock scores yet') || html.includes('Score curve'), 'mock ledger did not render');
 check(html.includes('Clinic status'), 'group roster did not render');
+check(html.includes('Cloud sync') && html.includes('local only'), 'settings must state the sync posture plainly');
 
 // mobile chrome must exist and be phone-scoped
 check(/md:hidden/.test(html) && html.includes('aria-haspopup="dialog"'), 'mobile tab bar missing');
@@ -233,6 +315,12 @@ check(html.includes('wall-sheet'), 'print wall sheet missing from the shell');
 check(!html.includes('undefined'), 'rendered "undefined" somewhere');
 check(!html.includes('[object Object]'), 'rendered an object');
 
-console.log(`weeks ${WEEKS.length} · tasks ${ALL_TASK_IDS.length} · boxes ${boxes} · ids ${ids.length} · html ${(html.length / 1024).toFixed(0)} kB`);
-console.log(errs.length ? 'FAILED:\n - ' + errs.join('\n - ') : 'ALL CHECKS PASSED');
-process.exit(errs.length ? 1 : 0);
+const finish = () => {
+  console.log(`weeks ${WEEKS.length} · tasks ${ALL_TASK_IDS.length} · boxes ${boxes} · ids ${ids.length} · html ${(html.length / 1024).toFixed(0)} kB`);
+  console.log(errs.length ? 'FAILED:\n - ' + errs.join('\n - ') : 'ALL CHECKS PASSED');
+  process.exit(errs.length ? 1 : 0);
+};
+
+// CJS output cannot top-level await, so async assertions are collected and flushed here
+if (pending.length) void Promise.all(pending).catch(() => undefined).then(() => setTimeout(finish, 0));
+else finish();
