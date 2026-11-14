@@ -41,6 +41,24 @@ To turn it on for a deployment:
    or into Vercel’s environment variables, then enable email/Google providers in Supabase → Auth.
 3. In Settings → Cloud sync, sign in with a magic link or Google. Nothing uploads until a session exists in *that* browser.
 
+**Already provisioned for this repo** (2026-11-14, Supabase project `sage-euee` / ref `efoeeosdbgceijxzbvtc`, eu-central-1, free plan):
+the `sage_progress` table + owner-only RLS policies are applied, email magic links are enabled, `site_url` is
+`http://localhost:5173` and the redirect allow-list covers the local dev origin plus the sandbox preview host.
+Two things remain a human’s job, because they are account decisions rather than code:
+
+- the **publishable key** is deliberately not committed — read it from Supabase → Settings → API keys and put it in
+  `.env.local` (git-ignored via `*.local`) or in Vercel’s project environment variables as `VITE_SUPABASE_ANON_KEY`;
+- **Google sign-in** needs an OAuth client from Google Cloud, and Supabase’s shared SMTP relay caps magic-link mail at a
+  couple of sends per hour — fine for a six-person study group, worth replacing with your own SMTP before anyone else uses it.
+
+A connected device can delete its own history from Settings → Cloud sync → *Erase cloud copy* (`DELETE` on the user’s row,
+local progress untouched).
+
+The isolation rule was checked against the live database, as `anon`: `select` returns 0 rows and `insert` fails with
+*“new row violates row-level security policy”* — so a signed-out visitor, or anyone without a JWT for that user, cannot
+read or write the table. What the sandbox **cannot** verify is the HTTP hop (no egress to `*.supabase.co` from here), so
+PostgREST/GoTrue behaviour and a real magic-link round-trip stay untested until tried in a browser.
+
 Sync is deliberately boring: `rev` counts every data-changing action, a debounced push mirrors the state, and on a
 conflict the higher revision wins wholesale while the losing device keeps a local snapshot (last three) it can
 re-import. No merge algorithm, no server logic, no second source of truth. `useCloudSync` fails silently into

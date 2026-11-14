@@ -258,6 +258,23 @@ export async function pushRow(state: State): Promise<{ ok: boolean; error?: stri
   return { ok: true, rev: state.rev };
 }
 
+/** Delete this user's mirrored row — the right to be forgotten should be one click, not a ticket. */
+export async function deleteRow(): Promise<{ ok: boolean; error?: string }> {
+  const cfg = cloudConfig();
+  if (!cfg) return { ok: false, error: 'unconfigured' };
+  const token = await validToken(cfg);
+  if (!token) return { ok: false, error: 'signed-out' };
+  const sub = userId(readSession());
+  if (!sub) return { ok: false, error: 'bad-token' };
+  const r = await request(cfg, `/rest/v1/sage_progress?user_id=eq.${encodeURIComponent(sub)}`, {
+    method: 'DELETE',
+    auth: token,
+    headers: { Prefer: 'return=minimal' },
+  });
+  if (!r.ok) return { ok: false, error: r.json?.message ?? r.text.slice(0, 160) };
+  return { ok: true };
+}
+
 /** Seam for the smoke test: proves the PostgREST/GoTrue contract (headers, verbs, error mapping)
  * without a live project. Nothing in the app should use it. */
 export const __test = { request };

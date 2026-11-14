@@ -198,6 +198,9 @@ export function Settings() {
                 <button type="button" className="btn-tiny" onClick={cloud.signOut}>
                   <Icon name="x" size={13} /> Disconnect
                 </button>
+                <button type="button" className="btn-tiny !border-rose/35 !text-rose" onClick={() => void cloud.erase()}>
+                  <Icon name="trash" size={13} /> Erase cloud copy
+                </button>
               </div>
               <p className="muted mt-2.5 text-[11.5px] leading-[1.5]">
                 Conflicts are resolved by revision, not by merging — the device with the newer revision wins, and the one that loses keeps a

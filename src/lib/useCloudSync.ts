@@ -9,6 +9,7 @@ import {
   pushRow,
   readSession,
   setAutoSync,
+  deleteRow,
   signInWithEmail,
   signInWithGoogle,
   signOut as clearSession,
@@ -37,6 +38,8 @@ export type CloudSync = {
   signOut: () => void;
   push: () => Promise<void>;
   sync: () => Promise<void>;
+  /** Delete the mirrored row (local progress stays on the device). */
+  erase: () => Promise<void>;
 };
 
 const DEBOUNCE_MS = 4000;
@@ -191,6 +194,21 @@ export function useCloudSync(state: State, dispatch: Dispatch<Action>): CloudSyn
     setError(null);
   }, [configured]);
 
+  const erase = useCallback(async () => {
+    if (typeof window !== 'undefined' && !window.confirm('Delete the cloud copy of your progress? This device keeps its own.')) return;
+    setPhase('syncing');
+    const res = await deleteRow();
+    if (res.ok) {
+      clearSession();
+      setSession(null);
+      setPhase(configured ? 'signed-out' : 'unconfigured');
+      setError(null);
+    } else {
+      setPhase('error');
+      setError(res.error ?? 'could not delete the row');
+    }
+  }, [configured]);
+
   const toggleAuto = useCallback(
     (v: boolean) => {
       setAutoSync(v);
@@ -215,5 +233,6 @@ export function useCloudSync(state: State, dispatch: Dispatch<Action>): CloudSyn
     signOut,
     push,
     sync,
+    erase,
   };
 }
