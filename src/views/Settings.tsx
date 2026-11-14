@@ -3,6 +3,7 @@ import { Card, Icon, Tag } from '../components/ui';
 import { useStore, type State } from '../lib/store';
 import { addDays, fmtLongDate, fmtShortDate, parseISO } from '../lib/date';
 import { printWallSheet } from '../lib/print';
+import { downloadIcs } from '../lib/ics';
 import { REMINDERS, notificationPermission, requestNotifications, type ReminderKey } from '../lib/reminders';
 import { PHASES, WEEKS, phaseOf } from '../data/roadmap';
 import { cn } from '../components/cn';
@@ -137,8 +138,8 @@ export function Settings() {
             {msg ? <span className="text-[11.5px] text-mint">{msg}</span> : <Tag>{derived.completeWeeks}/24 weeks</Tag>}
           </div>
           <p className="muted mt-1.5 text-[12.5px]">
-            Move your progress between the dorm machine and your phone, paste it into the Thursday group thread, or keep a copy with the
-            physical notebook.
+            Move your progress between the dorm machine and your phone, paste it into the Thursday group thread, or put the shift grid
+            itself into your phone calendar so the 3:00 AM block survives a closed tab.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button type="button" className="btn-tiny" onClick={exportJson}>
@@ -163,6 +164,16 @@ export function Settings() {
             </button>
             <button type="button" className="btn-tiny" onClick={printWallSheet}>
               <Icon name="printer" size={13} /> Print wall sheet
+            </button>
+            <button
+              type="button"
+              className="btn-tiny"
+              onClick={() => {
+                downloadIcs({ programStart: state.programStart, examDate: state.examDate, name: state.name });
+                flash('Calendar file downloaded — open it to add the 24 weeks to your phone.');
+              }}
+            >
+              <Icon name="calendar" size={13} /> Export .ics calendar
             </button>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-4">

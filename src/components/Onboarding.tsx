@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Card, Icon } from '../components/ui';
+import { useFocusTrap } from '../lib/focus';
 import { cn } from '../components/cn';
 import { addDays, fmtLongDate, isoDate, parseISO } from '../lib/date';
 import { useStore } from '../lib/store';
@@ -18,6 +19,7 @@ export function Onboarding() {
      reader has actually reached the app — by scrolling past the hero or by jumping to a
      deck/checklist anchor. */
   const [show, setShow] = useState(false);
+  const panelRef = useFocusTrap<HTMLDivElement>(show);
   useEffect(() => {
     if (show) return;
     const test = () => {
@@ -67,6 +69,7 @@ export function Onboarding() {
   return (
     <div className="fixed inset-0 z-[70] grid place-items-center bg-ink-950/92 p-4 backdrop-blur-md" role="dialog" aria-modal="true" aria-label="Set up SAGE">
       <div className="pointer-events-none absolute left-1/2 top-0 h-[420px] w-[820px] -translate-x-1/2 rounded-[50%] blur-3xl" style={{ background: 'radial-gradient(closest-side, rgba(120,165,255,0.4), transparent 72%)' }} aria-hidden="true" />
+      <div ref={panelRef}>
       <Card glow className="relative w-full max-w-[520px] animate-rise">
         <div className="flex items-center gap-2">
           {[0, 1, 2].map((i) => (
@@ -154,6 +157,7 @@ export function Onboarding() {
           </button>
         </div>
       </Card>
+      </div>
     </div>
   );
 }

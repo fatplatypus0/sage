@@ -55,6 +55,7 @@ for (const file of files) {
   if (/aria-modal=\"true\"/.test(src)) {
     if (!/Escape/.test(src) || !/addEventListener\(\s*'keydown'/.test(src))
       warn(file, 1, 'modal overlay without an Escape key handler');
+    if (!/useFocusTrap/.test(src)) warn(file, 1, 'modal overlay without useFocusTrap — Tab walks straight out of the sheet');
     if (/inset-x-0 bottom-0/.test(src) && !/pb-safe|env\(safe-area-inset-bottom\)/.test(src))
       warn(file, 1, 'bottom sheet ignores the home-indicator safe area');
   }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { REMINDERS, inWindow, notify, reminderApplies, type ReminderKey } from '../lib/reminders';
 import { todayKey } from '../lib/date';
+import { useFocusTrap } from '../lib/focus';
 import { useNow, useStore } from '../lib/store';
 import { WEEKS } from '../data/roadmap';
 import { Icon } from './ui';
@@ -16,6 +17,7 @@ export function AlarmLayer({ onOpenDrill }: { onOpenDrill?: () => void }) {
   const now = useNow(30000);
   const { state, dispatch, derived } = useStore();
   const [pending, setPending] = useState<ReminderKey | null>(null);
+  const panelRef = useFocusTrap<HTMLDivElement>(!!pending);
   const week = WEEKS[derived.currentWeek - 1];
 
   const due = useMemo(() => {
@@ -57,7 +59,7 @@ export function AlarmLayer({ onOpenDrill }: { onOpenDrill?: () => void }) {
   return (
     <div className="fixed inset-0 z-[60] no-print md:hidden" role="alertdialog" aria-modal="true" aria-label={r.title}>
       <div className="absolute inset-0 bg-ink-950/95 backdrop-blur-md" />
-      <div className="relative flex h-full flex-col items-center justify-center px-6 text-center">
+      <div ref={panelRef} className="relative flex h-full flex-col items-center justify-center px-6 text-center">
         <span className="pointer-events-none absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl" style={{ background: 'radial-gradient(closest-side, rgba(86,136,255,0.3), transparent 70%)' }} />
         <span className="relative grid h-16 w-16 animate-breathe place-items-center rounded-3xl border border-glow-300/30 bg-white/[0.07] text-glow-100">
           <Icon name={pending === 'wake' ? 'alarm' : pending === 'drill' ? 'target' : 'moon'} size={30} />

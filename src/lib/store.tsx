@@ -126,7 +126,7 @@ export type State = {
   lastVisit: string;
 };
 
-const STORAGE_KEY = 'sage.euee.v5';
+export const STORAGE_KEY = 'sage.euee.v5';
 /** The plan's own totals, used for pace projection. */
 const PROGRAM_DAYS_TOTAL = 168;
 const PLAN_QUESTION_TARGET = 2720 + 960;

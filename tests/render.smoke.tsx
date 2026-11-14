@@ -4,6 +4,7 @@ import App from '../src/App';
 import { WEEKS, ALL_TASK_IDS, PHASES, SHIFTS, DAILY_HABITS, TOTAL_QUESTIONS, phaseOf } from '../src/data/roadmap';
 import { isoDate, diffDays, parseISO, addDays, weekKey } from '../src/lib/date';
 import { __test, emptyState } from '../src/lib/store';
+import { buildIcs } from '../src/lib/ics';
 
 const errs: string[] = [];
 const check = (cond: unknown, msg: string) => {
@@ -132,6 +133,32 @@ check(DAILY_HABITS.every((h) => h.days.length > 0 && h.days.every((d) => d >= 0 
   const afterReset = reducer(st, { type: 'reset' });
   check(afterReset.name === st.name && afterReset.programStart === st.programStart, 'reset destroyed the user\'s dates');
   check(afterReset.sessions.length === 0 && afterReset.mocks.length === 0 && afterReset.peers.length === 0, 'reset left the new collections behind');
+}
+
+/* ---------- .ics export: the schedule, as recurring events ---------- */
+{
+  const ics = buildIcs({ programStart: '2026-01-12', examDate: '2026-07-03', name: 'Hanna' });
+  const lines = ics.split('\r\n');
+  check(ics.startsWith('BEGIN:VCALENDAR'), 'ics must start with VCALENDAR');
+  check(ics.trimEnd().endsWith('END:VCALENDAR'), 'ics must end with END:VCALENDAR');
+  check(!/[^\r]\n/.test(ics), 'ics must be CRLF-terminated');
+  check(Math.max(...lines.map((l) => l.length)) <= 75, 'ics lines must be folded to 75 octets');
+  const events = lines.filter((l) => l === 'BEGIN:VEVENT').length;
+  check(events >= 12 && events <= 40, `unexpected event count: ${events}`);
+  check(new Set(lines.filter((l) => l.startsWith('UID:'))).size === events, 'every VEVENT needs a unique UID');
+  check(!lines.some((l) => /DTSTART:(?!20\d{6}T\d{6}$)/.test(l)), 'DTSTART must be a floating local basic time');
+  check(lines.some((l) => l.includes('BYDAY=SA')), 'Saturday set must appear when the plan starts on a Monday');
+  const counts = lines.filter((l) => l.startsWith('RRULE:')).map((l) => Number(/COUNT=(\d+)/.exec(l)?.[1] ?? 0));
+  check(counts.every((c) => c >= 1 && c <= 24), `RRULE COUNT out of range: ${counts.join(',')}`);
+  const mondayDrill = lines.indexOf('SUMMARY:Locked drill hour · 15 questions');
+  check(mondayDrill > 0 && lines[mondayDrill - 3] === 'DTSTART:20260112T053000', 'drill hour must start at 5:30 AM on its own event');
+  // a four-day tail: one occurrence each, and no event that would land after the exam
+  const tail = buildIcs({ programStart: '2026-06-30', examDate: '2026-07-03', name: '' });
+  const tailLines = tail.split('\r\n');
+  const tailCounts = tailLines.filter((l) => l.startsWith('RRULE:')).map((l) => Number(/COUNT=(\d+)/.exec(l)?.[1] ?? 0));
+  check(tailCounts.length > 0 && tailCounts.every((c) => c === 1), `a 4-day tail should emit single occurrences, got ${tailCounts.join(',')}`);
+  check(!tailLines.some((l) => l.includes('BYDAY=SA')), 'nothing may be scheduled past the exam date');
+  check(tailLines[5] === 'X-WR-CALNAME:EUEE 24-week plan', 'empty name should not leave a dangling separator');
 }
 
 /* ---------- render the whole tree ---------- */

@@ -43,10 +43,12 @@ The plan is executed in bed, in a dorm room, on a phone — so the phone is the 
 - **Installable and offline**: manifest + generated icons (incl. maskable), `apple-touch-icon`, dark `theme-color`,
   `viewport-fit=cover`, and a service worker that registers only in production so `vite dev` stays honest. Open it
   once and the plan works on bad wifi.
-- **Modal overlays are auditable**: every `aria-modal` layer in the app carries an Escape path and (when bottom-anchored)
-  the home-indicator safe area — the linter fails if one disappears.
+- **Modal overlays are auditable**: every `aria-modal` layer (the More sheet, the alarm nudge, first-run setup) carries an
+  Escape path, a `useFocusTrap` so Tab cannot walk into the page behind it, and — when bottom-anchored — the home-indicator
+  safe area. The linter fails if any of the three disappears.
 - `npm run lint:mobile` is a guardrail, not a wish: it fails the check when a sub-32px button, 9px copy, hover-only
-  reveal, `100vh`, a stray bottom-fixed layer, a modal without Escape or a dangling anchor comes back. See `scripts/mobile-lint.mjs`.
+  reveal, `100vh`, a stray bottom-fixed layer, a modal without Escape or focus trap, or a dangling anchor comes back.
+  See `scripts/mobile-lint.mjs`.
 
 ## Stack
 
@@ -67,6 +69,13 @@ npm run icons        # regenerate PWA icons from the mark in scripts/gen-icons.m
 ```
 
 Deploy `dist/` to any static host (Netlify, GitHub Pages, Vercel, a school server). No env vars, no API.
+`vercel.json` is committed (Vite preset, immutable `/assets`, `no-cache` for `sw.js` so an update reaches phones on the next
+load), and `.github/workflows/ci.yml` runs `npm run check && npm run build` on every push to `main` and every pull request —
+the same three gates the local `npm run check` enforces, so a phone-hostile pattern cannot reach a deploy.
+
+If the 24 weeks start mid-plan, export **Settings → Export .ics calendar** instead of re-typing the grid: one recurring event
+per shift and weekday (the morning core splits into the concept read and the locked drill hour), `COUNT` bounded by your exam
+date, nothing scheduled past it.
 
 ## How the plan maps to code
 
