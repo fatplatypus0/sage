@@ -1,4 +1,4 @@
-import { StoreProvider } from './lib/store';
+import { StoreProvider, useStore } from './lib/store';
 import { Nav } from './components/Nav';
 import { Hero } from './components/Hero';
 import { Footer } from './components/Footer';
@@ -8,6 +8,11 @@ import { Today } from './views/Today';
 import { Checklist } from './views/Checklist';
 import { Shifts } from './views/Shifts';
 import { Notebook } from './views/Notebook';
+import { Drill } from './views/Drill';
+import { Mocks } from './views/Mocks';
+import { Roster } from './views/Roster';
+import { AlarmLayer } from './components/AlarmLayer';
+import { Onboarding } from './components/Onboarding';
 import { Stats } from './views/Stats';
 import { Toolkit } from './views/Toolkit';
 import { Settings } from './views/Settings';
@@ -25,6 +30,7 @@ export default function App() {
 const goTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
 function Shell() {
+  const { derived, state } = useStore();
   return (
     <>
       <div className="print-page relative min-h-screen">
@@ -74,6 +80,30 @@ function Shell() {
           <Today />
         </Section>
 
+        <Divider tone="#34d399" />
+
+        <Section id="drill">
+          <SectionHead
+            align="left"
+            kicker="Drill hour"
+            title={
+              <>
+                15 questions before sunrise,
+                <br className="hidden sm:block" /> <span className="blue-text">logged one tap at a time.</span>
+              </>
+            }
+            lead="The locked hour is the whole plan in miniature. Start a session, tap once per question, and every miss is filed into the red-flag notebook with its reason attached before 6:30 — the part nobody keeps doing by hand."
+            actions={
+              derived.openSession ? (
+                <span className="pill !py-1">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber" /> session open · {derived.openSession.items.length} logged
+                </span>
+              ) : null
+            }
+          />
+          <Drill />
+        </Section>
+
         <Section id="checklist" className="!pt-4">
           <SectionHead
             align="left"
@@ -113,7 +143,34 @@ function Shell() {
           <Notebook />
         </Section>
 
+        <Divider tone="#fbbf24" />
+
+        <Section id="mocks">
+          <SectionHead
+            align="left"
+            kicker="Mock ledger"
+            title="The scores that actually move readiness"
+            lead="A question tally proves volume; only a mock proves judgement. Log each 100-question national sitting with its per-subject split and the app keeps the curve, the delta and the diagnostic note the plan asks for."
+          />
+          <Mocks />
+        </Section>
+
         <Divider tone="#a78bfa" />
+
+        <Section id="group">
+          <SectionHead
+            align="left"
+            kicker="Reality · Thursday clinic"
+            title={
+              <>
+                Six people, four venues,
+                <br className="hidden sm:block" /> <span className="blue-text">one clinic that actually runs.</span>
+              </>
+            }
+            lead="The most fragile load-bearing part of the plan. Verify the roster each Thursday, fall back to pairs when a venue refuses, and annotate the week when school reality beats the grid."
+          />
+          <Roster />
+        </Section>
 
         <Section id="progress">
           <SectionHead
@@ -156,6 +213,8 @@ function Shell() {
     </div>
 
       <WallSheet />
+      <AlarmLayer onOpenDrill={() => goTo('drill')} />
+      {state.onboarded ? null : <Onboarding />}
     </>
   );
 }

@@ -250,6 +250,29 @@ export function Notebook() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Card>
+            <h4 className="font-display text-[14px] font-semibold text-white">The 10 costliest</h4>
+            <p className="mt-0.5 text-[11.5px] text-glow-200/50">
+              Ranked across the notebook and the drill runner — this is the list Sunday’s review is supposed to produce.
+            </p>
+            <ol className="mt-3 space-y-1.5">
+              {derived.costliest.length === 0 ? (
+                <li className="rounded-lg border border-dashed border-white/[0.12] px-3 py-4 text-center text-[12px] text-glow-200/50">
+                  Nothing to rank yet. Misses start appearing the moment a session ends or an entry is filed.
+                </li>
+              ) : (
+                derived.costliest.map((c, i) => (
+                  <li key={c.topic} className="flex items-center gap-2.5 rounded-lg border border-white/[0.07] bg-white/[0.02] px-2.5 py-2">
+                    <span className="num w-4 shrink-0 text-[11px] font-semibold text-glow-300/70">{i + 1}</span>
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: SUBJECTS[c.subject].color }} />
+                    <span className="min-w-0 flex-1 truncate text-[12px] text-glow-100/85">{c.topic}</span>
+                    {c.open ? <span className="num shrink-0 text-[10.5px] text-rose">{c.open} open</span> : <span className="num shrink-0 text-[10.5px] text-mint">cleared</span>}
+                    <span className="num shrink-0 text-[11px] font-semibold text-white">{c.count}×</span>
+                  </li>
+                ))
+              )}
+            </ol>
+          </Card>
+          <Card>
             <h4 className="font-display text-[14px] font-semibold text-white">Failure causes</h4>
             <p className="mt-0.5 text-[11.5px] text-glow-200/50">Attack the biggest bucket first.</p>
             <div className="mt-3 space-y-2.5">

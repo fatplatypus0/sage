@@ -3,6 +3,7 @@ import { Card, Icon, Tag } from '../components/ui';
 import { useStore, type State } from '../lib/store';
 import { addDays, fmtLongDate, fmtShortDate, parseISO } from '../lib/date';
 import { printWallSheet } from '../lib/print';
+import { REMINDERS, notificationPermission, requestNotifications, type ReminderKey } from '../lib/reminders';
 import { PHASES, WEEKS, phaseOf } from '../data/roadmap';
 import { cn } from '../components/cn';
 
@@ -10,6 +11,9 @@ export function Settings() {
   const { state, dispatch, derived, storageOk } = useStore();
   const [msg, setMsg] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [perm, setPerm] = useState(() => notificationPermission());
+  const permLabel = perm === 'unsupported' ? 'In-app only' : perm === 'granted' ? 'Notifications on' : 'Allow notifications';
+  const permission = () => notificationPermission();
   const file = useRef<HTMLInputElement | null>(null);
 
   const flash = (m: string) => {
@@ -188,6 +192,78 @@ export function Settings() {
             <span className="text-[11px] text-glow-200/40">Dates and name are kept.</span>
           </div>
         </Card>
+
+        <Card>
+          <div className="flex items-center justify-between">
+            <h4 className="font-display text-[15px] font-semibold text-white">Boundaries &amp; reminders</h4>
+            <button type="button" className="btn-tiny" onClick={() => void requestNotifications().then(() => setPerm(permission()))}>
+              <Icon name="alarm" size={13} /> {permLabel}
+            </button>
+          </div>
+          <p className="muted mt-1.5 text-[12.5px]">
+            Three times the plan cannot survive without. On a phone, an acknowledged nudge ticks the habit for you; the alarm still has
+            to be yours.
+          </p>
+          <div className="mt-3 grid gap-1.5">
+            {(Object.keys(REMINDERS) as ReminderKey[]).map((k) => {
+              const on = state.reminders[k];
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  role="switch"
+                  aria-checked={on}
+                  onClick={() => dispatch({ type: 'setReminder', field: k, value: !on })}
+                  className={cn(
+                    'tap flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition',
+                    on ? 'border-glow-400/45 bg-glow-500/15' : 'border-white/10 bg-white/[0.03]',
+                  )}
+                >
+                  <span className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-lg border', on ? 'border-glow-300/40 bg-white/10 text-glow-100' : 'border-white/10 bg-white/[0.04] text-glow-300/60')}>
+                    <Icon name={k === 'wake' ? 'alarm' : k === 'drill' ? 'target' : 'moon'} size={15} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[13px] font-semibold text-white">{REMINDERS[k].label} · {REMINDERS[k].title.split('—')[1]?.trim() ?? REMINDERS[k].title}</span>
+                    <span className="block truncate text-[11.5px] text-glow-200/50">{REMINDERS[k].body}</span>
+                  </span>
+                  <span className={cn('checkbox shrink-0', on && '!border-transparent')} data-checked={on} aria-hidden="true">
+                    {on ? <Icon name="check" size={12} className="text-ink-950" /> : null}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="muted mt-2.5 text-[11.5px]">
+            Weekdays only — Friday drops the drill nudge, the weekend drops everything but the 3:00 AM wake for Saturday’s 40 questions.
+          </p>
+        </Card>
+
+        {derived.scheduleSlip > 0 ? (
+          <Card className="!border-amber/35 !bg-amber/[0.06]">
+            <span className="kicker">
+              <Icon name="flag" size={12} className="text-amber" /> Schedule pressure
+            </span>
+            <h4 className="mt-2 font-display text-[16px] font-semibold text-white">
+              {derived.weeksLeftInPlan} weeks of plan, {derived.calendarWeeksLeft} weeks of calendar
+            </h4>
+            <p className="muted mt-1.5 text-[13px] leading-[1.55]">
+              You are {derived.scheduleSlip} week{derived.scheduleSlip === 1 ? '' : 's'} behind the grid. The plan’s own answer is not to
+              add hours: re-book the start so the remaining weeks land before the exam, then let the Sunday catch-up block absorb what is
+              behind.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" className="btn-tiny" onClick={() => dispatch({ type: 'shiftStart', days: 7 })}>
+                <Icon name="reset" size={13} /> Slide the plan 7 days later
+              </button>
+              <button type="button" className="btn-tiny" onClick={() => dispatch({ type: 'shiftStart', days: -7 })}>
+                <Icon name="arrow" size={13} /> Pull it 7 days earlier
+              </button>
+              <a href="#group" className="btn-tiny">
+                Book a catch-up block
+              </a>
+            </div>
+          </Card>
+        ) : null}
 
         <Card>
           <h4 className="font-display text-[15px] font-semibold text-white">Phase map</h4>

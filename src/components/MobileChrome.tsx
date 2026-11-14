@@ -11,6 +11,7 @@ import { cn } from './cn';
 
 const TABS = [
   { id: 'today', label: 'Deck', icon: 'bolt' },
+  { id: 'drill', label: 'Drill', icon: 'target' },
   { id: 'checklist', label: 'Plan', icon: 'check' },
   { id: 'notebook', label: 'Flags', icon: 'flag' },
   { id: 'progress', label: 'Stats', icon: 'chart' },
@@ -19,14 +20,16 @@ const TABS = [
 const SHEET_LINKS = [
   { id: 'features', label: 'What SAGE does', icon: 'sparkle' },
   { id: 'shifts', label: 'Daily system', icon: 'calendar' },
+  { id: 'mocks', label: 'Mock ledger', icon: 'trophy' },
+  { id: 'group', label: 'Study group', icon: 'users' },
   { id: 'toolkit', label: 'Timer & Thursday sync', icon: 'clock' },
-  { id: 'settings', label: 'Dates, backup, reset', icon: 'compass' },
+  { id: 'settings', label: 'Dates, reminders, backup', icon: 'compass' },
 ];
 
 export function MobileChrome() {
   const { state, dispatch, derived } = useStore();
   const [sheet, setSheet] = useState(false);
-  const active = useActiveSection(['features', 'today', 'checklist', 'shifts', 'notebook', 'progress', 'toolkit', 'settings']);
+  const active = useActiveSection(['features', 'today', 'drill', 'checklist', 'shifts', 'notebook', 'mocks', 'group', 'progress', 'toolkit', 'settings']);
   const week = WEEKS[derived.currentWeek - 1];
   const log = state.days[todayKey()];
   const stem = log?.stem ?? 0;

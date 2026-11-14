@@ -6,15 +6,18 @@ import { cn } from './cn';
 export const SECTIONS = [
   { id: 'features', label: 'Features' },
   { id: 'today', label: 'Command Deck' },
+  { id: 'drill', label: 'Drill' },
   { id: 'checklist', label: 'Checklist' },
   { id: 'shifts', label: 'Daily System' },
-  { id: 'notebook', label: 'Notebook' },
 ];
 
 export const MORE = [
+  { id: 'notebook', label: 'Red-flag notebook', note: 'Every miss, filed for the review ladder' },
+  { id: 'mocks', label: 'Mock ledger', note: 'Scores, subject split, trend' },
+  { id: 'group', label: 'Study group', note: 'Thursday clinic roster' },
   { id: 'progress', label: 'Progress & readiness', note: 'One score for the whole program' },
   { id: 'toolkit', label: 'Execution toolkit', note: 'Shift timer · Thursday sync · rules' },
-  { id: 'settings', label: 'Settings & backup', note: 'Dates, JSON export, wall sheet' },
+  { id: 'settings', label: 'Settings & backup', note: 'Dates, reminders, JSON export' },
 ];
 
 export function Logo({ className }: { className?: string }) {

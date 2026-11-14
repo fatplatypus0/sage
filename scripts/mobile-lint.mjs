@@ -51,6 +51,14 @@ for (const file of files) {
       warn(file, n, 'very wide fixed element without an overflow-hidden ancestor');
   });
 
+  // 5) every modal overlay needs an Escape path; bottom-anchored sheets need the safe area
+  if (/aria-modal=\"true\"/.test(src)) {
+    if (!/Escape/.test(src) || !/addEventListener\(\s*'keydown'/.test(src))
+      warn(file, 1, 'modal overlay without an Escape key handler');
+    if (/inset-x-0 bottom-0/.test(src) && !/pb-safe|env\(safe-area-inset-bottom\)/.test(src))
+      warn(file, 1, 'bottom sheet ignores the home-indicator safe area');
+  }
+
   // 3) hover-driven interaction with no keyboard/tap equivalent
   if (/onMouseEnter/.test(src) && !/onFocus/.test(src)) warn(file, 1, 'onMouseEnter without a focus/tap equivalent');
 

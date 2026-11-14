@@ -38,8 +38,10 @@ export function Stats() {
                   : 'Rebuild the habit: 5:30 AM drill, then everything else.'}
             </h3>
             <p className="muted mt-1.5 text-[13px]">
-              Weighted 60% checklist completion, 25% question volume against the {Math.round(planned).toLocaleString()} the plan expects
-              by week {derived.currentWeek}, and 15% notebook hygiene + lights-out discipline.
+              Weighted {derived.mockCount ? '50% checklist, 20% volume, 15% hygiene, 15% mock score' : '60% checklist completion, 25% question volume'}
+              {derived.mockCount
+                ? ` — your last sitting scored ${Math.round(derived.mockLatest * 100)}%, which is the only part of this number that was measured rather than counted.`
+                : ` against the ${Math.round(planned).toLocaleString()} the plan expects by week ${derived.currentWeek}, and 15% notebook hygiene + lights-out discipline. Log a mock in the ledger and 15 points move onto the score.`}
             </p>
             <div className="mt-4 grid gap-2 sm:grid-cols-3">
               <MiniBar label="Checklist" value={derived.completion} color="#6f9bff" note={`${derived.doneCount}/${derived.totalTasks} tasks`} />
