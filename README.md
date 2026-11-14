@@ -55,6 +55,11 @@ The plan is executed in bed, in a dorm room, on a phone — so the phone is the 
   sections, the print sheet and the live readiness numbers.
 - **Floating drill logger** above the tab bar while you are on the deck: `+5` and a fill-to-target button, with a
   haptic tick, so the 5:30 AM hour can be logged with one thumb.
+- **The runner has a keyboard harness too**: on a laptop in the dorm, `1` correct · `2` missed (reason grid) ·
+  `3` skipped · `u` or Backspace undoes the last question, and `Enter` banks the current one — the hands never leave the row.
+  Ending a session drops straight into a *Session banked* panel: what was filed, what each miss cost, and a jump to the golden rules.
+- **Boundary nudges on both form factors** — full-screen takeover on the phone at 5:30 AM, a compact bottom-right toast on a
+  laptop, same logging, same once-a-day guard.
 - **44px tap targets** on every counter, checkbox and chip; `touch-action: manipulation` kills the double-tap delay;
   16px inputs stop iOS from zoom-jumping on focus.
 - **Swipe rails** for the day strip and the filter chips instead of cramped grids, with scroll snapping; the shift

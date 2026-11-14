@@ -282,6 +282,19 @@ check(html.includes('No mock scores yet') || html.includes('Score curve'), 'mock
 check(html.includes('Clinic status'), 'group roster did not render');
 check(html.includes('Cloud sync') && html.includes('local only'), 'settings must state the sync posture plainly');
 
+// the ritual's polish pass: desktop nudges, keyboard harness, post-session hand-off, hero resume
+const alarm = readFileSync('src/components/AlarmLayer.tsx', 'utf8');
+check(/fixed inset-0[^\n]*md:hidden/.test(alarm) && /hidden md:block/.test(alarm), 'the alarm must keep BOTH halves: full-screen on phones, toast on desktop');
+check(/hidden md:block/.test(alarm), 'alarm layer lost its desktop toast variant');
+check(/role="alertdialog"/.test(alarm) && /aria-modal="true"/.test(alarm), 'alarm nudge must announce itself');
+const drill = readFileSync('src/views/Drill.tsx', 'utf8');
+check(/addEventListener\('keydown'/.test(drill), 'the runner must keep a keyboard harness (1/2/3/Enter/u)');
+check(/Session banked/.test(drill), 'ending a session must hand off to the notebook');
+check(/start\(ended\.kind\)/.test(drill), 'the re-run CTA must carry the finished session kind, not stale state');
+const trap = readFileSync('src/lib/focus.ts', 'utf8');
+check(/offsetParent !== null/.test(trap), 'focus trap must skip display:none halves of a responsive overlay');
+check(/const first = visible\(\)\[0\]/.test(trap), 'initial focus must use the same visibility filter as the tab cycle');
+
 // mobile chrome must exist and be phone-scoped
 check(/md:hidden/.test(html) && html.includes('aria-haspopup="dialog"'), 'mobile tab bar missing');
 check(html.includes('wall-sheet'), 'print wall sheet missing from the shell');

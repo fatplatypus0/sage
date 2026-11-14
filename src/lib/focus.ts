@@ -16,13 +16,16 @@ export function useFocusTrap<T extends HTMLElement>(active: boolean) {
     const panel = ref.current;
     if (!panel) return;
     const previous = document.activeElement as HTMLElement | null;
-    const first = panel.querySelector<HTMLElement>(FOCUSABLE);
+    // display:none subtrees report a null offsetParent, so the hidden half of a responsive
+    // overlay (phone panel vs desktop toast) never receives focus
+    const visible = () => [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent !== null);
+    const first = visible()[0];
     // do not steal focus on touch: the tap that opened the sheet is already the focus
     if (!first?.matches(':hover') && window.matchMedia('(pointer: fine)').matches) first?.focus();
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Tab') return;
-      const items = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent !== null);
+      const items = visible();
       if (!items.length) return;
       const i = items.indexOf(document.activeElement as HTMLElement);
       const next = e.shiftKey ? (i <= 0 ? items.length - 1 : i - 1) : i === items.length - 1 ? 0 : i + 1;

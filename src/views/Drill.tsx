@@ -26,7 +26,9 @@ export function Drill() {
   const [pendingWrong, setPendingWrong] = useState(false);
   const [secs, setSecs] = useState(90);
   const [autoLog, setAutoLog] = useState(true);
+  const [justEnded, setJustEnded] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const ended = justEnded ? state.sessions.find((x) => x.id === justEnded) ?? null : null;
 
   const override = state.overrides[String(week.n)] ?? {};
   const mode = MODES.find((m) => m.kind === (open?.kind ?? kind))!;
@@ -59,15 +61,18 @@ export function Drill() {
     [week.n],
   );
 
-  const start = () => {
+  const start = (kindOverride?: SessionKind) => {
+    const k = kindOverride ?? kind;
+    const m = MODES.find((x) => x.kind === k)!;
     dispatch({
       type: 'startSession',
       week: week.n,
-      kind,
-      target: kind === 'clinic' ? 40 : week.drillTarget,
-      perItemSecs: mode.secs,
-      subject: kind === 'drill' ? week.sides[override.swapped ? 1 - sideIndex() : sideIndex()].subject : kind === 'clinic' ? 'english' : undefined,
+      kind: k,
+      target: k === 'clinic' ? 40 : week.drillTarget,
+      perItemSecs: m.secs,
+      subject: k === 'drill' ? week.sides[override.swapped ? 1 - sideIndex() : sideIndex()].subject : k === 'clinic' ? 'english' : undefined,
     });
+    setKind(k);
     haptic(12);
     setTimeout(() => inputRef.current?.focus(), 60);
   };
@@ -85,8 +90,31 @@ export function Drill() {
   const finish = () => {
     if (!session) return;
     dispatch({ type: 'endSession', sessionId: session.id, autoLog, dayKey: todayKey() });
+    setJustEnded(session.id);
     setAutoLog(true);
+    haptic(24);
   };
+
+  /* Keyboard harness: the plan says one tap per question, so the hands never leave the row.
+     1 = correct · 2 = missed (reason grid) · 3 = skipped · u = undo · Enter = correct */
+  useEffect(() => {
+    if (!session || pendingWrong) return;
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+      if (e.key === 'Enter' && !typing) return log('correct');
+      if (typing) return;
+      if (e.key === '1') log('correct');
+      else if (e.key === '2') setPendingWrong(true);
+      else if (e.key === '3') log('skipped');
+      else if (e.key === 'u' || e.key === 'Backspace') {
+        const last = items[items.length - 1];
+        if (last) dispatch({ type: 'undoItem', sessionId: session.id, itemId: last.id });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [session?.id, items.length, secs, topic, pendingWrong]);
 
   /* ---- live session ---- */
   if (session) {
@@ -159,14 +187,17 @@ export function Drill() {
               <button type="button" onClick={() => log('correct')} className="tap flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-2xl border border-mint/35 bg-mint/[0.12] text-white active:scale-95">
                 <Icon name="check" size={20} className="text-mint" />
                 <span className="text-[13px] font-semibold">Correct</span>
+                <span className="hidden text-[10px] uppercase tracking-[0.14em] text-glow-200/40 sm:block">1</span>
               </button>
               <button type="button" onClick={() => setPendingWrong(true)} className="tap flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-2xl border border-rose/35 bg-rose/[0.1] text-white active:scale-95">
                 <Icon name="x" size={20} className="text-rose" />
                 <span className="text-[13px] font-semibold">Missed</span>
+                <span className="hidden text-[10px] uppercase tracking-[0.14em] text-glow-200/40 sm:block">2</span>
               </button>
               <button type="button" onClick={() => log('skipped')} className="tap flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-2xl border border-white/12 bg-white/[0.05] text-glow-100 active:scale-95">
                 <Icon name="arrow" size={20} />
                 <span className="text-[13px] font-semibold">Skipped</span>
+                <span className="hidden text-[10px] uppercase tracking-[0.14em] text-glow-200/40 sm:block">3</span>
               </button>
             </div>
             {over ? (
@@ -216,6 +247,65 @@ export function Drill() {
   }
 
   /* ---- setup ---- */
+  if (ended && ended.items.length) {
+    const filed = ended.items.filter((i) => i.outcome !== 'correct' && i.topic.trim());
+    const correctN = ended.items.filter((i) => i.outcome === 'correct').length;
+    return (
+      <div className="grid gap-4 lg:grid-cols-[1.15fr_1fr]">
+        <Card glow className="lg:col-span-2">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <span className="kicker">
+                <Icon name="check" size={12} className="text-mint" /> Session banked · week {ended.week}
+              </span>
+              <h3 className="mt-2 font-display text-[20px] font-semibold leading-tight text-white">
+                {ended.items.length} questions logged · {correctN} clean · {filed.length} filed as red flags
+              </h3>
+              <p className="muted mt-1.5 text-[13px]">
+                {ended.autoLogged
+                  ? 'Tomorrow 6:10 AM only has to add the one-line golden rule — the topics and causes are already in the notebook.'
+                  : 'Misses were not auto-filed, so the notebook is still waiting for them.'}
+              </p>
+            </div>
+            <button type="button" className="btn-tiny" onClick={() => setJustEnded(null)}>
+              <Icon name="x" size={13} /> Dismiss
+            </button>
+          </div>
+          {filed.length ? (
+            <ul className="mt-4 flex flex-wrap gap-1.5">
+              {filed.map((i) => (
+                <li key={i.id} className="inline-flex items-center gap-1.5 rounded-xl border border-rose/25 bg-rose/[0.06] px-2.5 py-1.5 text-[12.5px] text-glow-100">
+                  <Icon name="flag" size={12} className="text-rose" />
+                  {i.topic.trim()}
+                  <span className="text-[11px] text-glow-200/45">{i.secs}s</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-4 rounded-xl border border-mint/25 bg-mint/[0.06] px-3 py-2.5 text-[13px] text-mint">
+              A clean session. The plan’s note for that: it means the questions were too easy — raise the side, not the hours.
+            </p>
+          )}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <a href="#notebook" className="btn-light !py-2.5 text-[13.5px]">
+              <Icon name="book" size={15} /> Add the golden rules now
+            </a>
+            <button
+              type="button"
+              className="btn-ghost !py-2.5 text-[13.5px]"
+              onClick={() => {
+                setJustEnded(null);
+                start(ended.kind);
+              }}
+            >
+              <Icon name="reset" size={15} /> Run another set
+            </button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-4 lg:grid-cols-[1.15fr_1fr]">
       <Card glow>
@@ -260,7 +350,7 @@ export function Drill() {
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <button type="button" onClick={start} className="btn-light flex-1 !py-3 text-[14px] sm:flex-none">
+          <button type="button" onClick={() => start()} className="btn-light flex-1 !py-3 text-[14px] sm:flex-none">
             <Icon name="play" size={15} /> Start {mode.label.toLowerCase()}
           </button>
           <span className="text-[11.5px] text-glow-200/45">
